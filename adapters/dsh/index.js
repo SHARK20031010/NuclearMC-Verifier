@@ -155,6 +155,7 @@ function isBashBypassingPhysicsCode(cmd) {
 
 module.exports = {
   name: "dsh-mc-formal-verifier",
+  inject: ["commands"],
   apply(ctx) {
     ctx.logger && ctx.logger.info("MC-FormalVerifier native gate loaded into DSH.");
 
@@ -173,7 +174,7 @@ module.exports = {
 
       // ── 情况 A：write 工具全量写盘 ──
       if (toolName === "write") {
-        const filePath = args.path || args.filename || "";
+        const filePath = args.file_path || "";
         const content = args.content || "";
 
         if (isCppFile(filePath) && hasPhysicsKeywords(content)) {
@@ -189,7 +190,7 @@ module.exports = {
 
       // ── 情况 B：edit 工具局部编辑（打补丁后全量核验） ──
       if (toolName === "edit") {
-        const filePath = args.path || args.filename || "";
+        const filePath = args.file_path || "";
         const oldStr = args.old_string || "";
         const newStr = args.new_string || "";
 
@@ -224,11 +225,13 @@ module.exports = {
     });
 
     // ═════════════════════════════════════════════════════════════════
-    // 2. 注册 DSH 斜杠命令
+    // 2. 注册 DSH 斜杠命令（命令注册表服务名: commands）
     // ═════════════════════════════════════════════════════════════════
-    if (ctx.command) {
-      // /mc-status
-      ctx.command("mc-status", "查看粒子输运蒙卡形式化核验器状态").action(async ({ session }) => {
+    ctx.commands.register({
+      name: "mc-status",
+      description: "查看粒子输运蒙卡形式化核验器状态",
+      recordInput: false,
+      handler: async () => {
         const cfg = getSwitchConfig();
         const statusMsg = [
           "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
@@ -240,63 +243,92 @@ module.exports = {
           "  • 底层守恒总线: 因果时钟、相空间测度、权重流无偏、生命周期、核数据",
           "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         ].join("\n");
-        return session.send(statusMsg);
-      });
+        return { kind: "success", text: statusMsg };
+      },
+    });
 
-      // /mc-on
-      ctx.command("mc-on", "开启蒙卡物理守恒形式化核验门禁").action(async ({ session }) => {
+    // /mc-on
+    ctx.commands.register({
+      name: "mc-on",
+      description: "开启蒙卡物理守恒形式化核验门禁",
+      recordInput: false,
+      handler: async () => {
         try {
           if (fs.existsSync(CONFIG_FILE)) {
             let content = fs.readFileSync(CONFIG_FILE, "utf-8");
             content = content.replace(/enabled:\s*false/i, "enabled: true");
             fs.writeFileSync(CONFIG_FILE, content, "utf-8");
           }
-          return session.send("✅ DSH 形式化核验门禁已开启（物理守恒刚性阻断已就绪）。");
+          return {
+            kind: "success",
+            text: "✅ DSH 形式化核验门禁已开启（物理守恒刚性阻断已就绪）。",
+          };
         } catch (e) {
-          return session.send(`修改配置失败: ${e.message}`);
+          return { kind: "error", text: `修改配置失败: ${e.message}` };
         }
-      });
+      },
+    });
 
-      // /mc-off
-      ctx.command("mc-off", "临时关闭蒙卡物理形式化核验门禁").action(async ({ session }) => {
+    // /mc-off
+    ctx.commands.register({
+      name: "mc-off",
+      description: "临时关闭蒙卡物理形式化核验门禁",
+      recordInput: false,
+      handler: async () => {
         try {
           if (fs.existsSync(CONFIG_FILE)) {
             let content = fs.readFileSync(CONFIG_FILE, "utf-8");
             content = content.replace(/enabled:\s*true/i, "enabled: false");
             fs.writeFileSync(CONFIG_FILE, content, "utf-8");
           }
-          return session.send("⏸️ DSH 形式化核验门禁已关闭（零开销放行模式）。");
+          return {
+            kind: "success",
+            text: "⏸️ DSH 形式化核验门禁已关闭（零开销放行模式）。",
+          };
         } catch (e) {
-          return session.send(`修改配置失败: ${e.message}`);
+          return { kind: "error", text: `修改配置失败: ${e.message}` };
         }
-      });
+      },
+    });
 
-      // /mc-verify <filepath>
-      ctx.command("mc-verify <filepath:string>", "对指定的 C++ 蒙卡源码执行离线形式化核验")
-        .action(async ({ session }, filepath) => {
-          if (!filepath) {
-            return session.send("用法: /mc-verify <文件路径.cc>");
-          }
-          const absPath = path.resolve(filepath);
-          if (!fs.existsSync(absPath)) {
-            return session.send(`文件未找到: ${filepath}`);
-          }
-          const code = fs.readFileSync(absPath, "utf-8");
-          const res = await runVerification(code, absPath, true);
-          if (res.passed) {
-            return session.send(`✅ [通过] 文件 ${path.basename(filepath)} 完全符合五大正交守恒不变式。`);
-          } else {
-            return session.send(res.reason || "❌ 检测到物理守恒违约。");
-          }
-        });
+    // /mc-verify <文件路径.cc>
+    ctx.commands.register({
+      name: "mc-verify",
+      description: "对指定的 C++ 蒙卡源码执行离线形式化核验",
+      input: { hint: "<文件路径.cc>" },
+      recordInput: false,
+      handler: async (invocation) => {
+        const filepath = String((invocation && invocation.rawInput) || "").trim();
+        if (!filepath) {
+          return { kind: "error", text: "用法: /mc-verify <文件路径.cc>" };
+        }
+        const absPath = path.resolve(filepath);
+        if (!fs.existsSync(absPath)) {
+          return { kind: "error", text: `文件未找到: ${filepath}` };
+        }
+        const code = fs.readFileSync(absPath, "utf-8");
+        const res = await runVerification(code, absPath, true);
+        if (res.passed) {
+          return {
+            kind: "success",
+            text: `✅ [通过] 文件 ${path.basename(filepath)} 完全符合五大正交守恒不变式。`,
+          };
+        }
+        return { kind: "error", text: res.reason || "❌ 检测到物理守恒违约。" };
+      },
+    });
 
-      // /mc-spec
-      ctx.command("mc-spec", "查看粒子输运蒙卡形式化规约白皮书").action(async ({ session }) => {
+    // /mc-spec
+    ctx.commands.register({
+      name: "mc-spec",
+      description: "查看粒子输运蒙卡形式化规约白皮书",
+      recordInput: false,
+      handler: async () => {
         if (fs.existsSync(SPEC_FILE)) {
-          return session.send(fs.readFileSync(SPEC_FILE, "utf-8"));
+          return { kind: "success", text: fs.readFileSync(SPEC_FILE, "utf-8") };
         }
-        return session.send("未找到 PHYSICS_SPEC.md 规约文件。");
-      });
-    }
+        return { kind: "error", text: "未找到 PHYSICS_SPEC.md 规约文件。" };
+      },
+    });
   },
 };
