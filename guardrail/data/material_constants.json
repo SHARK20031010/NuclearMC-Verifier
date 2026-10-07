@@ -1,0 +1,68 @@
+{
+  "description": "Canonical detector physics, solid-state, and optical material properties",
+  "version": "1.0.0",
+  "semiconductors": {
+    "Silicon": {
+      "aliases": ["Si", "G4_Si", "silicon", "Silicon"],
+      "fano_factor": 0.115,
+      "fano_range": [0.08, 0.15],
+      "w_value_eV": 3.62,
+      "note": "Standard room/cryogenic temperature silicon detector Fano factor"
+    },
+    "Germanium": {
+      "aliases": ["Ge", "G4_Ge", "germanium", "HPGe", "Germanium"],
+      "fano_factor": 0.08,
+      "fano_range": [0.05, 0.13],
+      "w_value_eV": 2.96,
+      "note": "Standard HPGe semiconductor Fano factor"
+    },
+    "CZT": {
+      "aliases": ["CdZnTe", "CZT", "CadmiumZincTelluride"],
+      "fano_factor": 0.09,
+      "fano_range": [0.06, 0.14],
+      "w_value_eV": 4.64
+    },
+    "Diamond": {
+      "aliases": ["Diamond", "G4_C", "diamond"],
+      "fano_factor": 0.08,
+      "fano_range": [0.05, 0.12],
+      "w_value_eV": 13.0
+    }
+  },
+  "scintillators": {
+    "Plastic": {
+      "aliases": ["BC400", "BC408", "EJ200", "plastic", "G4_PLASTIC_SC_VINYLTOLUENE"],
+      "birks_constant_mm_per_MeV": 0.126,
+      "birks_range": [0.08, 0.20],
+      "note": "Typical organic plastic scintillator Birks constant ~0.126 mm/MeV"
+    },
+    "Liquid": {
+      "aliases": ["BC501A", "EJ301", "EJ309", "liquid_scintillator"],
+      "birks_constant_mm_per_MeV": 0.10,
+      "birks_range": [0.07, 0.18]
+    },
+    "NaI": {
+      "aliases": ["NaI", "G4_SODIUM_IODIDE", "NaI_Tl"],
+      "birks_constant_mm_per_MeV": 0.015,
+      "note": "Inorganic alkali halide scintillator"
+    }
+  },
+  "cherenkov_media": {
+    "Water": {
+      "aliases": ["G4_WATER", "Water", "H2O"],
+      "refractive_index_range": [1.33, 1.35],
+      "requires_rindex": true,
+      "cherenkov_threshold_beta": 0.752
+    },
+    "Aerogel": {
+      "aliases": ["Aerogel", "aerogel"],
+      "refractive_index_range": [1.01, 1.06],
+      "requires_rindex": true
+    },
+    "LeadGlass": {
+      "aliases": ["LeadGlass", "SF5"],
+      "refractive_index_range": [1.65, 1.85],
+      "requires_rindex": true
+    }
+  }
+}

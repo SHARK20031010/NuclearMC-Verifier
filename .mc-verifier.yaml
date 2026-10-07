@@ -1,0 +1,28 @@
+# ==============================================================================
+# MC-FormalVerifier: 针对大语言模型生成粒子输运蒙卡程序的形式化核验器
+# 全局多宿主统一配置文件与总开关 (Global Multi-Harness Switch & Configuration)
+# 适配列表: [Antigravity, OpenCode, DSH, Claude Code, Codex]
+# ==============================================================================
+
+# 全局总开关：
+# true  -> 在所有 5 大 Harness 中激活 5 大守恒不变式硬性门禁与 AST 审查
+# false -> 严格 0ms No-Op 穿透模式，各 Harness 立即放行，零性能损耗与零干扰
+enabled: true
+
+# 阻断模式：
+# true  -> 检出物理守恒违约时返回非零退出码 / 抛出阻断异常，强制模型重新修复
+# false -> 仅以日志形式输出审计清单，不阻断交付
+strict_mode: true
+
+# 前置规约契约校验：
+# true  -> 要求模型在编写代码时必须对齐输入物理规约（几何、粒子、源项、活度、归一化基准）
+require_specification: true
+
+# 守恒不变式启闭细项 (默认全部开启)
+invariants:
+  energy_conservation: true            # 能量动量守恒不变式
+  conserved_quantum_numbers: true      # 轻子/重子/电荷守恒不变式
+  phase_space_measure: true            # 相空间测度与立体角对称性不变式
+  fair_game_weight: true               # 输运统计无偏性与减方差权重不变式
+  dimensional_linearity: true          # 量纲链与响应标度线性不变式
+  framework_api_contracts: true        # Geant4/OpenMC 步进生命周期与框架语义契约

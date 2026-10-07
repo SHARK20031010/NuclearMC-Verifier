@@ -1,0 +1,172 @@
+/*
+```guardrail-intent
+{
+  "F1a": {
+    "v": "fluence",
+    "src": "U"
+  },
+  "F1b": {
+    "v": "T6-H1 目标几何空间",
+    "src": "U"
+  },
+  "F2": {
+    "v": "count",
+    "src": "U"
+  },
+  "F3": {
+    "v": "other",
+    "src": "A"
+  },
+  "F4": {
+    "v": "volume_avg",
+    "src": "U"
+  },
+  "F5": {
+    "v": "steady",
+    "src": "A"
+  },
+  "F6": {
+    "v": "per_source",
+    "src": "U"
+  },
+  "F7": {
+    "v": "trend",
+    "src": "A"
+  },
+  "F8": {
+    "v": "other_mc",
+    "src": "A"
+  },
+  "F9": {
+    "v": "N/A",
+    "src": "U"
+  },
+  "F10": {
+    "v": "scalar",
+    "src": "U"
+  },
+  "warnings": [
+    "per_source_needs_strength"
+  ]
+}
+```
+*/
+
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4VUserDetectorConstruction.hh"
+#include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4UserEventAction.hh"
+#include "G4UserRunAction.hh"
+#include "G4Step.hh"
+#include "G4Track.hh"
+#include "G4Event.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics.hh"
+#include "G4OpticalPhysics.hh"
+#include "G4RandomDirection.hh"
+#include "Randomize.hh"
+#include "G4MagneticField.hh"
+#include "G4FieldManager.hh"
+#include "G4TransportationManager.hh"
+#include "G4ChordFinder.hh"
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+#include <map>
+#include <string>
+
+// ============================================================================
+// 任务 T6-H1: 高能强子厚散裂靶产生顶点生命周期追踪
+// 组别: Arm C (Level 3 第一性原理修复)
+// ============================================================================
+
+static G4long gTotalNeutronBirths = 0;
+static G4double gTotalBirthEnergy = 0.0;
+
+class T6H1Detector : public G4VUserDetectorConstruction {
+public:
+  G4VPhysicalVolume* Construct() override {
+    auto* nist = G4NistManager::Instance();
+    auto* air = nist->FindOrBuildMaterial("G4_AIR");
+    auto* matW = nist->FindOrBuildMaterial("G4_W");
+
+    auto* worldSolid = new G4Box("WorldBox", 50.0 * cm, 50.0 * cm, 50.0 * cm);
+    auto* worldLog = new G4LogicalVolume(worldSolid, air, "WorldLog");
+    auto* worldPhys = new G4PVPlacement(nullptr, {}, worldLog, "WorldPhys", nullptr, false, 0);
+
+    // 钨散裂靶圆柱体 (Tungsten Spallation Target)
+    auto* tgtSolid = new G4Tubs("SpallTgtSolid", 0.0 * cm, 5.0 * cm, 25.0 * cm, 0, 360*deg);
+    auto* tgtLog = new G4LogicalVolume(tgtSolid, matW, "SpallTgtLog");
+    new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), tgtLog, "SpallTgtPhys", worldLog, false, 1);
+
+    return worldPhys;
+  }
+};
+
+class T6H1Physics : public G4VModularPhysicsList {
+public:
+  T6H1Physics() {
+    RegisterPhysics(new G4EmStandardPhysics());
+  }
+};
+
+class T6H1Generator : public G4VUserPrimaryGeneratorAction {
+public:
+  void GeneratePrimaries(G4Event* anEvent) override {
+    G4ParticleGun gun(1);
+    gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("proton"));
+    gun.SetParticleEnergy(1.2 * GeV);
+    gun.SetParticlePosition(G4ThreeVector(0, 0, -30.0 * cm));
+    gun.SetParticleMomentumDirection(G4ThreeVector(0, 0, 1));
+    gun.GeneratePrimaryVertex(anEvent);
+  }
+};
+
+class T6H1SteppingAction : public G4UserSteppingAction {
+public:
+  void UserSteppingAction(const G4Step* aStep) override {
+    auto* pre = aStep->GetPreStepPoint()->GetPhysicalVolume();
+    if (!pre || pre->GetName() != "SpallTgtPhys") return;
+
+    auto* track = aStep->GetTrack();
+    if (!track) return;
+
+    // 强子散裂次级产生生命周期拓扑隔离: 仅在首步记录产生奇点 (GetCurrentStepNumber() == 1)
+    if (track->GetCurrentStepNumber() == 1 && track->GetParentID() > 0) {
+      G4String pName = track->GetDefinition()->GetParticleName();
+      if (pName == "neutron" || pName == "proton" || pName == "pi+" || pName == "pi-") {
+        gTotalNeutronBirths++;
+        gTotalBirthEnergy += track->GetKineticEnergy();
+      }
+    }
+  }
+};
+
+int main(int argc, char** argv) {
+  auto* runManager = new G4RunManager();
+  runManager->SetUserInitialization(new T6H1Detector());
+  runManager->SetUserInitialization(new T6H1Physics());
+  runManager->SetUserAction(new T6H1Generator());
+  runManager->SetUserAction(new T6H1SteppingAction());
+  runManager->Initialize();
+
+  G4int nEvents = (argc > 1) ? std::atoi(argv[1]) : 50;
+  runManager->BeamOn(nEvents);
+
+  std::cout << "[T6-H1] Secondary Hadron Birth Vertices: " << gTotalNeutronBirths 
+            << " Energy: " << gTotalBirthEnergy / GeV << " GeV" << std::endl;
+
+  delete runManager;
+  std::_Exit(0);
+}

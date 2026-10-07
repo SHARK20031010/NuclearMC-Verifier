@@ -1,0 +1,132 @@
+/*
+```guardrail-intent
+{
+  "F1a": {
+    "v": "fluence",
+    "src": "U"
+  },
+  "F1b": {
+    "v": "T6-M5 目标几何空间",
+    "src": "U"
+  },
+  "F2": {
+    "v": "count",
+    "src": "U"
+  },
+  "F3": {
+    "v": "other",
+    "src": "A"
+  },
+  "F4": {
+    "v": "volume_avg",
+    "src": "U"
+  },
+  "F5": {
+    "v": "steady",
+    "src": "A"
+  },
+  "F6": {
+    "v": "per_source",
+    "src": "U"
+  },
+  "F7": {
+    "v": "trend",
+    "src": "A"
+  },
+  "F8": {
+    "v": "other_mc",
+    "src": "A"
+  },
+  "F9": {
+    "v": "N/A",
+    "src": "U"
+  },
+  "F10": {
+    "v": "scalar",
+    "src": "U"
+  },
+  "warnings": [
+    "per_source_needs_strength"
+  ]
+}
+```
+*/
+
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4VUserDetectorConstruction.hh"
+#include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4UserEventAction.hh"
+#include "G4Step.hh"
+#include "G4Event.hh"
+#include "G4Track.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics_option4.hh"
+#include "Randomize.hh"
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+
+static G4double gTransverseSpread = 0;
+
+class Det : public G4VUserDetectorConstruction {
+public:
+  G4VPhysicalVolume* Construct() override {
+    auto* nist = G4NistManager::Instance();
+    auto* world = new G4LogicalVolume(new G4Box("W", 1*m, 1*m, 3*m), nist->FindOrBuildMaterial("G4_AIR"), "W");
+    return new G4PVPlacement(nullptr, {}, world, "W", nullptr, false, 0);
+  }
+};
+
+class Prim : public G4VUserPrimaryGeneratorAction {
+public:
+  void GeneratePrimaries(G4Event* ev) override {
+    G4ParticleGun gun(1);
+    gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("proton"));
+    gun.SetParticleEnergy(100 * MeV);
+    // 护栏修复: 基于 Twiss 参数 (alpha, beta, emittance) 的相空间关联倾斜椭圆抽样
+    G4double alpha = 1.2;
+    G4double beta = 2.0 * m;
+    G4double emittance = 1.0e-6 * m * rad;
+    G4double gamma = (1.0 + alpha*alpha) / beta;
+    G4double sigma_x = std::sqrt(beta * emittance);
+    G4double u1 = G4RandGauss::shoot(0, 1.0);
+    G4double u2 = G4RandGauss::shoot(0, 1.0);
+    G4double x = sigma_x * u1;
+    G4double xp = - (alpha / std::sqrt(beta)) * std::sqrt(emittance) * u1 + (1.0 / std::sqrt(beta)) * std::sqrt(emittance) * u2;
+    gun.SetParticlePosition({x, 0, 0});
+    gun.SetParticleMomentumDirection(G4ThreeVector(xp, 0, 1.0).unit());
+    gun.GeneratePrimaryVertex(ev);
+  }
+};
+
+class Step : public G4UserSteppingAction {
+public:
+  void UserSteppingAction(const G4Step* s) override {
+    gTransverseSpread += std::abs(s->GetPreStepPoint()->GetPosition().x());
+  }
+};
+
+int main(int argc, char** argv) {
+  auto* rm = new G4RunManager();
+  rm->SetUserInitialization(new Det());
+  auto* pl = new G4VModularPhysicsList();
+  pl->RegisterPhysics(new G4EmStandardPhysics_option4());
+  rm->SetUserInitialization(pl);
+  rm->SetUserAction(new Prim());
+  rm->SetUserAction(new Step());
+  rm->Initialize();
+  rm->BeamOn(argc > 1 ? std::atoi(argv[1]) : 50);
+  std::cout << "T6-M5 Twiss Emittance Correlated Sampled, Spread = " << gTransverseSpread/mm << " mm" << std::endl;
+  delete rm; return 0;
+}

@@ -1,0 +1,92 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C / C++ build artifacts & binaries
+*.o
+*.obj
+*.so
+*.dylib
+*.a
+*.bin
+a.out
+
+# Geant4 / ROOT simulation data outputs
+*.root
+
+# CMake build outputs and directories
+build/
+build_bins/
+build_tmp/
+build_tmp_*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Standalone probe and test executables
+/verify/ar_ctrl
+/verify/ar_e2e
+/verify/finalprobe
+/verify/hpnames
+/verify/matprobe
+/verify/tslprobe
+/verify/wip/emcmp
+/verify/wip/vprobe
+/verify/mesh/mesh
+/verify/mesh/mesh2
+/verify/mesh/mesh2b
+/verify/mesh/mesh2c
+/verify/probe/dumptree
+/verify/probe/enginetest
+/verify/probe/resumeprobe
+/verify/g4flux/testflux
+/verify/g4test/smoke
+/verify/g4test/t1
+/verify/g4test/t2
+/verify/g4test/t88
+/verify/g4test/t94
+/verify/g4test/t96
+/verify/g4test/t97
+/verify/g4test/verify
+/verify/g4test/verify2
+
+/g4dump/audit
+/g4dump/cascorr
+/g4dump/cmdprobe
+/g4dump/cotime
+/g4dump/g4dump
+/g4dump/gpsbehav
+/g4dump/gpsprobe
+/g4dump/hist
+/g4dump/lvlprobe
+/g4dump/product
+/g4dump/sanity
+/g4dump/table
+/g4dump/thermal
+
+# Archives and local backups
+*.tar.gz
+*.zip
+*.bak
+.archive_pre_cleanup.tar.gz
+
+# OS and Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Private research manuscripts and internal schemes
+paper_manuscript.md
+AI蒙卡程序物理正确率与防错体系_综合总案.md
+
+# Intermediate experiment and dump directories
+g4dump/
+verify/
+测量方案/
+benchmarks
+docs/

@@ -1,0 +1,8 @@
+{
+  "name": "dsh-mc-formal-verifier",
+  "version": "1.0.0",
+  "description": "针对大语言模型生成粒子输运蒙卡程序的形式化核验 DSH 插件",
+  "main": "index.js",
+  "author": "MC-AI Safety Working Group",
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "mc-formal-verifier",
+  "description": "针对大语言模型生成粒子输运蒙卡程序的形式化核验插件 (Geant4 / OpenMC)，严格检验 5 大正交守恒不变式与输入规约契约。",
+  "version": "1.0.0",
+  "disabled": false
+}

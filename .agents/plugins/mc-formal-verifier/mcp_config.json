@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mc-formal-verifier": {
+      "command": "python3",
+      "args": ["adapters/mcp/server.py"]
+    }
+  }
+}

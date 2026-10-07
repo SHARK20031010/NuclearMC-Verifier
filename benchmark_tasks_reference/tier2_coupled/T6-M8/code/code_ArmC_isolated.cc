@@ -1,0 +1,137 @@
+/*
+```guardrail-intent
+{
+  "F1a": {
+    "v": "fluence",
+    "src": "U"
+  },
+  "F1b": {
+    "v": "T6-M8 目标几何空间",
+    "src": "U"
+  },
+  "F2": {
+    "v": "count",
+    "src": "U"
+  },
+  "F3": {
+    "v": "other",
+    "src": "A"
+  },
+  "F4": {
+    "v": "volume_avg",
+    "src": "U"
+  },
+  "F5": {
+    "v": "steady",
+    "src": "A"
+  },
+  "F6": {
+    "v": "per_source",
+    "src": "U"
+  },
+  "F7": {
+    "v": "trend",
+    "src": "A"
+  },
+  "F8": {
+    "v": "other_mc",
+    "src": "A"
+  },
+  "F9": {
+    "v": "N/A",
+    "src": "U"
+  },
+  "F10": {
+    "v": "scalar",
+    "src": "U"
+  },
+  "warnings": [
+    "per_source_needs_strength"
+  ]
+}
+```
+*/
+
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4VUserDetectorConstruction.hh"
+#include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4UserEventAction.hh"
+#include "G4Step.hh"
+#include "G4Event.hh"
+#include "G4Track.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics_option4.hh"
+#include "Randomize.hh"
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+
+#include "G4QuadrupoleMagField.hh"
+#include "G4FieldManager.hh"
+#include "G4TransportationManager.hh"
+static G4double gBeamOutX = 0;
+
+class Det : public G4VUserDetectorConstruction {
+public:
+  G4VPhysicalVolume* Construct() override {
+    auto* nist = G4NistManager::Instance();
+    auto* world = new G4LogicalVolume(new G4Box("W", 1*m, 1*m, 4*m), nist->FindOrBuildMaterial("G4_AIR"), "W");
+    auto* pipe = new G4LogicalVolume(new G4Tubs("VacuumPipe", 0, 5*cm, 1.5*m, 0, 360*deg), nist->FindOrBuildMaterial("G4_AIR"), "VacuumPipe");
+    new G4PVPlacement(nullptr, {0,0,0}, pipe, "VacuumPipe", world, false, 0);
+
+    // 护栏修复: 建立 G4QuadrupoleMagField 四极聚焦磁透镜 (field gradient = 10 T/m)
+    G4double gradient = 10.0 * tesla / m;
+    auto* quadField = new G4QuadrupoleMagField(gradient);
+    auto* fieldMgr = G4TransportationManager::GetTransportationManager()->GetFieldManager();
+    fieldMgr->SetDetectorField(quadField);
+    fieldMgr->CreateChordFinder(quadField);
+
+    return new G4PVPlacement(nullptr, {}, world, "W", nullptr, false, 0);
+  }
+};
+
+class Prim : public G4VUserPrimaryGeneratorAction {
+public:
+  void GeneratePrimaries(G4Event* ev) override {
+    G4ParticleGun gun(1);
+    gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("e-"));
+    gun.SetParticleEnergy(10 * MeV);
+    gun.SetParticlePosition({1*mm, 1*mm, -1.5*m});
+    gun.SetParticleMomentumDirection({0.01, 0.01, 1.0});
+    gun.GeneratePrimaryVertex(ev);
+  }
+};
+
+class Step : public G4UserSteppingAction {
+public:
+  void UserSteppingAction(const G4Step* s) override {
+    if (s->GetPreStepPoint()->GetPosition().z() > 1.4*m) {
+      gBeamOutX += std::abs(s->GetPreStepPoint()->GetPosition().x());
+    }
+  }
+};
+
+int main(int argc, char** argv) {
+  auto* rm = new G4RunManager();
+  rm->SetUserInitialization(new Det());
+  auto* pl = new G4VModularPhysicsList();
+  pl->RegisterPhysics(new G4EmStandardPhysics_option4());
+  rm->SetUserInitialization(pl);
+  rm->SetUserAction(new Prim());
+  rm->SetUserAction(new Step());
+  rm->Initialize();
+  rm->BeamOn(argc > 1 ? std::atoi(argv[1]) : 50);
+  std::cout << "T6-M8 Quadrupole Gradient Field Focused, Out X = " << gBeamOutX/mm << " mm" << std::endl;
+  delete rm; return 0;
+}

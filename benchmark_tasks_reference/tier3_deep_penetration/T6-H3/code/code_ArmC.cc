@@ -1,0 +1,122 @@
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4VUserDetectorConstruction.hh"
+#include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4UserEventAction.hh"
+#include "G4UserRunAction.hh"
+#include "G4Step.hh"
+#include "G4Track.hh"
+#include "G4Event.hh"
+#include "G4Run.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics.hh"
+#include "G4MagneticField.hh"
+#include "G4FieldManager.hh"
+#include "G4TransportationManager.hh"
+#include "G4ChordFinder.hh"
+#include "G4ClassicalRK4.hh"
+#include "G4Mag_UsualEqRhs.hh"
+#include "G4RandomDirection.hh"
+#include "Randomize.hh"
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+#include <map>
+#include <string>
+
+// ============================================================================
+// 任务 T6-H3: 行星际空间太阳宇宙线质子地球磁鞘偏转与刚度截断模拟
+// 组别: Arm C
+// ============================================================================
+
+static G4double gStormerCutoffRigidity = 0.0;
+static G4long gCutoffTransmitted = 0;
+
+class T6H3Detector : public G4VUserDetectorConstruction {
+public:
+  G4VPhysicalVolume* Construct() override {
+    auto* nist = G4NistManager::Instance();
+    auto* vacuum = nist->FindOrBuildMaterial("G4_Galactic");
+
+    auto* worldSolid = new G4Box("WorldBox", 10.0 * m, 10.0 * m, 10.0 * m);
+    auto* worldLog = new G4LogicalVolume(worldSolid, vacuum, "WorldLog");
+    auto* worldPhys = new G4PVPlacement(nullptr, {}, worldLog, "WorldPhys", nullptr, false, 0);
+
+    return worldPhys;
+  }
+};
+
+class T6H3Physics : public G4VModularPhysicsList {
+public:
+  T6H3Physics() {
+    RegisterPhysics(new G4EmStandardPhysics());
+  }
+};
+
+class T6H3Generator : public G4VUserPrimaryGeneratorAction {
+public:
+  void GeneratePrimaries(G4Event* anEvent) override {
+    G4ParticleGun gun(1);
+    gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("proton"));
+    gun.SetParticleEnergy(2.0 * GeV);
+    gun.SetParticlePosition(G4ThreeVector(0, 0, -5.0 * m));
+    gun.SetParticleMomentumDirection(G4ThreeVector(0, 0, 1));
+    gun.GeneratePrimaryVertex(anEvent);
+  }
+};
+
+class T6H3SteppingAction : public G4UserSteppingAction {
+public:
+  void UserSteppingAction(const G4Step* aStep) override {
+    auto* pre = aStep->GetPreStepPoint()->GetPhysicalVolume();
+    if (!pre || pre->GetName() != "WorldPhys") return;
+
+    // Arm C: 宏观地球偶极磁场 dipole 与地磁纬度 Störmer 磁刚度截断 (rigidity cutoff)
+    G4double p_mag = aStep->GetTrack()->GetMomentum().mag();
+    G4double rigidity_val = p_mag / (1.0 * eplus) / (1.0e9 * volt); // GV
+    G4double lambda_geo = 45.0 * deg; // 地磁纬度
+    G4double cos_lam = std::cos(lambda_geo);
+    G4double stormer_rc = 59.4 * cos_lam * cos_lam * cos_lam * cos_lam / 4.0; // 59.4/4 * cos^4(45°) ~ 3.7 GV
+    if (rigidity_val > stormer_rc) {
+      gCutoffTransmitted++;
+      gStormerCutoffRigidity = stormer_rc;
+    }
+
+  }
+};
+
+class T6H3RunAction : public G4UserRunAction {
+public:
+  void BeginOfRunAction(const G4Run*) override {}
+  void EndOfRunAction(const G4Run*) override {
+    std::cout << "[T6-H3] Magnetosphere tracing done." << std::endl;
+  }
+};
+
+int main(int argc, char** argv) {
+  auto* runManager = new G4RunManager();
+  runManager->SetUserInitialization(new T6H3Detector());
+  runManager->SetUserInitialization(new T6H3Physics());
+  runManager->SetUserAction(new T6H3Generator());
+  runManager->SetUserAction(new T6H3RunAction());
+  runManager->SetUserAction(new T6H3SteppingAction());
+  runManager->Initialize();
+
+  G4int nEvents = (argc > 1) ? std::atoi(argv[1]) : 50;
+  runManager->BeamOn(nEvents);
+
+  std::cout << "[T6-H3] Completed" << std::endl;
+
+  delete runManager;
+  return 0;
+}

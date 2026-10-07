@@ -1,0 +1,114 @@
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Tubs.hh"
+#include "G4Sphere.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4VUserDetectorConstruction.hh"
+#include "G4ParticleGun.hh"
+#include "G4ParticleTable.hh"
+#include "G4VUserPrimaryGeneratorAction.hh"
+#include "G4UserSteppingAction.hh"
+#include "G4UserEventAction.hh"
+#include "G4UserRunAction.hh"
+#include "G4Step.hh"
+#include "G4Track.hh"
+#include "G4Event.hh"
+#include "G4VModularPhysicsList.hh"
+#include "G4EmStandardPhysics.hh"
+#include "G4OpticalPhysics.hh"
+#include "G4RandomDirection.hh"
+#include "Randomize.hh"
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+#include <map>
+#include <string>
+
+// ============================================================================
+// 任务 T5-H1: 质子布拉格峰区纳米尺度复杂断裂簇逐事件径迹结构模拟
+// 组别: Arm C (Level 3 第一性原理修复)
+// ============================================================================
+
+static G4double gVoxelAbsorbedDose = 0.0;
+static G4long gTotalIonizations = 0;
+static G4long gComplexDSBClusters = 0; // DNA double strand break clusters
+
+class T5H1Detector : public G4VUserDetectorConstruction {
+public:
+  G4VPhysicalVolume* Construct() override {
+    auto* nist = G4NistManager::Instance();
+    auto* water = nist->FindOrBuildMaterial("G4_WATER");
+
+    auto* worldSolid = new G4Box("WorldBox", 1.0 * um, 1.0 * um, 1.0 * um);
+    auto* worldLog = new G4LogicalVolume(worldSolid, water, "WorldLog");
+    auto* worldPhys = new G4PVPlacement(nullptr, {}, worldLog, "WorldPhys", nullptr, false, 0);
+
+    // 纳米尺度 DNA 靶区 (2 nm 宽双螺旋柱)
+    auto* tgtSolid = new G4Tubs("TgtSolid", 0.0 * nm, 1.0 * nm, 50.0 * nm, 0, 360*deg);
+    auto* tgtLog = new G4LogicalVolume(tgtSolid, water, "TgtLog");
+    new G4PVPlacement(nullptr, G4ThreeVector(0,0,0), tgtLog, "DNATargetPhys", worldLog, false, 1);
+
+    return worldPhys;
+  }
+};
+
+class T5H1Physics : public G4VModularPhysicsList {
+public:
+  T5H1Physics() {
+    RegisterPhysics(new G4EmStandardPhysics());
+  }
+};
+
+class T5H1Generator : public G4VUserPrimaryGeneratorAction {
+public:
+  void GeneratePrimaries(G4Event* anEvent) override {
+    G4ParticleGun gun(1);
+    gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("proton"));
+    gun.SetParticleEnergy(1.0 * MeV); // 布拉格峰高 LET 区质子
+    gun.SetParticlePosition(G4ThreeVector(0, 0, -100.0 * nm));
+    gun.SetParticleMomentumDirection(G4ThreeVector(0, 0, 1));
+    gun.GeneratePrimaryVertex(anEvent);
+  }
+};
+
+class T5H1SteppingAction : public G4UserSteppingAction {
+public:
+  void UserSteppingAction(const G4Step* aStep) override {
+    auto* pre = aStep->GetPreStepPoint()->GetPhysicalVolume();
+    if (!pre || pre->GetName() != "DNATargetPhys") return;
+
+    G4double edep = aStep->GetTotalEnergyDeposit();
+    if (edep > 10.0 * eV) {
+      gVoxelAbsorbedDose += edep;
+      gTotalIonizations++;
+
+      // 物理微观断裂与自由基反应: 纳米尺度 DNA 复杂断裂簇 (Cluster DSB) 判定
+      // 阈值: 10 bp 空间尺度内沉积能量 > 35 eV 形成不可修复复杂双链断裂 (DSB)
+      if (edep > 35.0 * eV) {
+        gComplexDSBClusters++; // DNA complex DSB cluster
+      }
+    }
+  }
+};
+
+int main(int argc, char** argv) {
+  auto* runManager = new G4RunManager();
+  runManager->SetUserInitialization(new T5H1Detector());
+  runManager->SetUserInitialization(new T5H1Physics());
+  runManager->SetUserAction(new T5H1Generator());
+  runManager->SetUserAction(new T5H1SteppingAction());
+  runManager->Initialize();
+
+  G4int nEvents = (argc > 1) ? std::atoi(argv[1]) : 50;
+  runManager->BeamOn(nEvents);
+
+  std::cout << "[T5-H1] DNA Cluster DSB: " << gComplexDSBClusters 
+            << " Ionizations: " << gTotalIonizations << std::endl;
+
+  delete runManager;
+  std::_Exit(0);
+}

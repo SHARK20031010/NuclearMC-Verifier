@@ -1,0 +1,2307 @@
+{
+  "schema_version": 1,
+  "rule_count": 66,
+  "rules": [
+    {
+      "id": "PHYS-0001",
+      "title": "高精度（_HP）物理列表会砍掉原模型的适用能量下限",
+      "stage": 4,
+      "mechanism": "M2",
+      "severity": "high",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "physics_list",
+        "name": "-",
+        "key": "value",
+        "value_matches": "*_HP"
+      },
+      "verdict": "你用的是一个\"高精度\"物理列表（{value}）。它除了增加高精度模型，还会把原有\n中子弹性模型 hElasticCHIPS 的适用能量下限从 0 抬到 19.5 MeV —— 名字上看不出来。\n",
+      "sources": [
+        "Geant4 11.2.2 source/physics_lists/constructors/hadron_elastic/src/G4HadronElasticPhysicsHP.cc:75-77"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0001.md"
+    },
+    {
+      "id": "PHYS-0002",
+      "title": "物理列表之外额外注册了构造器",
+      "stage": 4,
+      "mechanism": "M9",
+      "severity": "high",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "physics_list",
+        "name": "-",
+        "key": "extra_constructors",
+        "expect": "(无)"
+      },
+      "verdict": "除了最接近的那个官方物理列表自带的，还额外装了物理构造器：{value}\n",
+      "sources": [
+        "本机实测：LD_PRELOAD 拦截 G4VModularPhysicsList::RegisterPhysics（记录 291~682 条/配置）",
+        "官方清单指纹：guardrail/data/official_lists.json，由 mkofficial.py 从 32 个出厂基线快照生成"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0002.md"
+    },
+    {
+      "id": "PHYS-0003",
+      "title": "模型的适用能量范围被静默改写",
+      "stage": 4,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "drift",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "drift",
+        "op": "*",
+        "change": "energy_shift",
+        "process": "*",
+        "model": "*"
+      },
+      "verdict": "过程 {process}（粒子 {particle}）上的模型 {model} 能量范围被改动：\n    {before}  →  {after}\n",
+      "sources": [
+        "本机实测：状态缓存 + 写操作前 diff + 写操作后更新缓存",
+        "Geant4 11.2.2 source/physics_lists/constructors/hadron_elastic/src/G4ThermalNeutrons.cc:78-87",
+        "Geant4 11.2.2 source/physics_lists/constructors/hadron_elastic/src/G4HadronElasticPhysicsHP.cc:75-77"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0003.md"
+    },
+    {
+      "id": "PHYS-0004",
+      "title": "隐藏漂移 —— 只在收尾扫描才发现的改动",
+      "stage": 4,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "drift",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "drift",
+        "op": "*",
+        "change": "hidden_shift"
+      },
+      "verdict": "【没抓到动作，但状态变了】过程 {process}（粒子 {particle}）上的 {model}：\n    {before}  →  {after}\n这次改动**没有任何可拦的写操作报告过它**。\n",
+      "sources": [
+        "本机实测：收尾扫描发现 / 写操作拦截未覆盖"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0004.md"
+    },
+    {
+      "id": "PHYS-0005",
+      "title": "过程上多个模型的能量段之间有缝隙，某段能量没人管",
+      "stage": 4,
+      "mechanism": "M10",
+      "severity": "high",
+      "output": "violation",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "process",
+        "name": "*",
+        "key": "coverage_gap",
+        "value_is": true
+      },
+      "verdict": "过程 {name} 上挂了多个模型，但它们的适用能量段中间有缝隙 ——\n缝隙里的粒子没有任何模型负责，程序不会报错，只会给出没有物理依据的数。\n",
+      "sources": [
+        "本机实测：G4HadronicProcess::GetHadronicInteractionList() 逐模型读 GetMinEnergy/GetMaxEnergy"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0005.md"
+    },
+    {
+      "id": "PHYS-0006",
+      "title": "模型的能量范围是空的（不负责任何能量）",
+      "stage": 4,
+      "mechanism": "M10",
+      "severity": "high",
+      "output": "violation",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "model",
+        "name": "*",
+        "key": "range_valid",
+        "expect": true
+      },
+      "verdict": "模型 {name} 的能量范围是空的（下限不低于上限），它实际上不会被用到。\n",
+      "sources": [
+        "本机实测：GetMinEnergy()/GetMaxEnergy() 逐模型读出"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0006.md"
+    },
+    {
+      "id": "PHYS-0007",
+      "title": "EM 物理用的是哪一套（option0-4 / Livermore / Penelope）",
+      "stage": 4,
+      "mechanism": "M2",
+      "severity": "medium",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "constructor",
+        "name": "*",
+        "key": "present",
+        "name_matches": "*Em*",
+        "value_is": true
+      },
+      "verdict": "电磁物理构造器：{name} —— 这一套决定了低能电磁过程的建模方式。\n",
+      "sources": [
+        "本机实测：G4VModularPhysicsList::GetPhysics(i)->GetPhysicsName()"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0007.md"
+    },
+    {
+      "id": "PHYS-0008",
+      "title": "过程上挂载/替换了截面数据集",
+      "stage": 4,
+      "mechanism": "M3",
+      "severity": "medium",
+      "output": "notice",
+      "detect": "drift",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "drift",
+        "op": "AddDataSet",
+        "change": "dataset_added",
+        "process": "*",
+        "summarize": true
+      },
+      "verdict": "本次运行共给 {count} 处过程挂载了截面数据集，涉及 {distinct} 种：\n{list}\n这些名字对应的是哪一版评价库（ENDF/B、JEFF、TENDL、JENDL），需要你确认。\n",
+      "sources": [
+        "本机实测：LD_PRELOAD 拦截 G4HadronicProcess::AddDataSet"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0008.md"
+    },
+    {
+      "id": "PHYS-0009",
+      "title": "Birks 抑制没开（有机闪烁体场景下剂量会被高估）",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "high",
+      "output": "question",
+      "detect": "snapshot",
+      "applies_to": [
+        "detector_response",
+        "dosimetry"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "em_parameter",
+        "name": "BirksActive",
+        "key": "value",
+        "expect": true
+      },
+      "verdict": "Birks 抑制当前是关闭的（程序默认就是关闭）。\n",
+      "question": "你的探测器里有没有有机闪烁体（塑料闪烁体、液体闪烁体）？\n如果有，Birks 抑制没开的话，带电粒子在闪烁体里沉积的能量会被算高。\n要开吗？\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4EmParameters.hh（BirksActive getter）",
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmParameters.cc:108 SetDefaults()"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0009.md"
+    },
+    {
+      "id": "PHYS-0010",
+      "title": "极化效应没开",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "medium",
+      "output": "question",
+      "detect": "snapshot",
+      "applies_to": [
+        "detector_response"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "em_parameter",
+        "name": "EnablePolarisation",
+        "key": "value",
+        "expect": true
+      },
+      "verdict": "电磁过程的极化效应当前是关闭的（程序默认关闭）。\n",
+      "question": "你要不要考虑光子的极化？如果你的测量和散射角度分布、极化相关性有关，\n不开这个的话角度分布会不准。如果只是算总剂量，那不用管。\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4EmParameters.hh（EnablePolarisation getter）",
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmParameters.cc:108  fPolarisation = false"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0010.md"
+    },
+    {
+      "id": "PHYS-0011",
+      "title": "荧光 / 俄歇电子没开",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "medium",
+      "output": "question",
+      "detect": "snapshot",
+      "applies_to": [
+        "dosimetry",
+        "detector_response",
+        "activation"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "em_parameter",
+        "name": "Fluo",
+        "key": "value",
+        "expect": true
+      },
+      "verdict": "原子弛豫产生的荧光光子和俄歇电子当前不产生（程序默认关闭）。\n",
+      "question": "原子被电离之后会放出特征 X 射线（荧光）和俄歇电子。\n现在这些都不产生 —— 如果关心的是沉积能量的空间分布（尤其是靠近材料界面处），\n会有偏差。你的场景需要吗？\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4EmParameters.hh（Fluo/Auger getters）",
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmParameters.cc:108 SetDefaults()"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0011.md"
+    },
+    {
+      "id": "PHYS-0012",
+      "title": "产生截断没有真正杀死低能次级（ApplyCuts）",
+      "stage": 4,
+      "mechanism": "M10",
+      "severity": "medium",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "em_parameter",
+        "name": "ApplyCuts",
+        "key": "value",
+        "expect": true
+      },
+      "verdict": "ApplyCuts 当前关闭：低于产生截断的次级粒子仍会被产生和跟踪，\n只是不再产生它们自己的次级。截断的物理含义因此和直觉不同。\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4EmParameters.hh（ApplyCuts getter）",
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmParameters.cc:108 SetDefaults()"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0012.md"
+    },
+    {
+      "id": "PHYS-0013",
+      "title": "强子截面被整体缩放了",
+      "stage": 4,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "hadronic_parameter",
+        "name": "XSFactor*",
+        "key": "value",
+        "expect": 1.0
+      },
+      "verdict": "强子截面缩放因子 {name} = {value}（正常应为 1.0）。\n这会把某一类反应的截面整体乘上这个倍数。\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4HadronicParameters.hh（XSFactor* getters）"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0013.md"
+    },
+    {
+      "id": "PHYS-0014",
+      "title": "中子记录/衰变的时间阈值被改动",
+      "stage": 4,
+      "mechanism": "M10",
+      "severity": "medium",
+      "output": "violation",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "hadronic_parameter",
+        "name": "GetNeutronKineticEnergyThresholdForSVT",
+        "key": "value",
+        "expect": -1
+      },
+      "verdict": "中子动能阈值 = {value} MeV（默认 -1，表示不启用该阈值）。\n低于这个动能的中子处理方式会改变。\n",
+      "sources": [
+        "Geant4 11.2.2 include/Geant4/G4HadronicParameters.hh"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0014.md"
+    },
+    {
+      "id": "PHYS-0015",
+      "title": "LPM 效应是开着的（高能电子/正电子）",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "low",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "em_parameter",
+        "name": "LPM",
+        "key": "value",
+        "expect": true
+      },
+      "verdict": "LPM（朗道-庞密-米格代尔）效应被关掉了 —— 而它默认是开着的。\n",
+      "sources": [
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmParameters.cc:108  flagLPM = true"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0015.md"
+    },
+    {
+      "id": "PHYS-0016",
+      "title": "链条里有衰变过程（延迟粒子会被输运）",
+      "stage": 4,
+      "mechanism": "M9",
+      "severity": "medium",
+      "output": "notice",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "process",
+        "name": "*/Decay",
+        "key": "present",
+        "name_matches": "*/Decay",
+        "value_is": true
+      },
+      "verdict": "粒子 {name} 上挂着 Decay 过程：不稳定核素会现场衰变并继续输运子体。\n这意味着\"什么时候停止跟踪\"需要一个明确判据。\n",
+      "sources": [
+        "本机实测：过程注册表遍历"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0016.md"
+    },
+    {
+      "id": "PHYS-0017",
+      "title": "物理列表是自己拼的，不在 Geant4 官方清单里",
+      "stage": 4,
+      "mechanism": "M9",
+      "severity": "high",
+      "output": "question",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "physics_list",
+        "name": "-",
+        "key": "official",
+        "expect": true
+      },
+      "verdict": "这个程序用的物理列表，构造器组合跟 Geant4 官方清单里的任何一个都对不上 ——\n也就是说，它的物理内容是程序自己一项一项拼出来的，不是选了一个官方列表。\n程序不会报错，结果照样出，但\"哪些相互作用被算进去了\"完全取决于拼了什么。\n",
+      "question": "这个程序的物理列表是自己拼的，不在 Geant4 官方列表清单里。\n比如只装了电磁过程、没装强子过程。\n\n这是你有意要的，还是写的时候顺手拼的？\n\n请确认这个列表覆盖了你关心的所有粒子种类和能量范围。\n",
+      "sources": [
+        "Geant4 11.2.2 source/physics_lists/lists/src/G4PhysListFactory.cc（官方列表清单）",
+        "本机实测：27 个官方列表的构造器集合指纹（data/official_lists.json，由 mkofficial.py 生成）",
+        "本机实测：24 个模型生成的任务程序里 13 个的构造器集合与 27 个官方列表全不匹配"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0017.md"
+    },
+    {
+      "id": "PHYS-0018",
+      "title": "装了非弹性强子物理，却没装弹性",
+      "stage": 4,
+      "mechanism": "M9",
+      "severity": "high",
+      "output": "violation",
+      "detect": "snapshot",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "snapshot",
+        "subject": "physics_list",
+        "name": "-",
+        "key": "hadron_missing_elastic",
+        "value_is": true
+      },
+      "verdict": "这个程序的物理列表里装了「非弹性」强子物理，但一个「弹性」都没有。\n弹性散射是低能中子在材料里改变方向的主要机制。漏掉它，中子的走向和穿透深度都会算错。\n程序不会报错，也不会有任何提示。\n",
+      "sources": [
+        "Geant4 11.2.2 物理构造器命名约定：弹性类含 `hElastic`/`Elastic`，非弹性类含 `hInelastic`/`Inelastic`",
+        "本机实测：任务 T1-2 自己拼列表只装了 `G4EmStandardPhysics_option4` + `G4HadronPhysicsQGSP_BIC_HP`，中子过程只有 Transportation/neutronInelastic/nCapture/nFission，没有 hadElastic",
+        "本机实测：T1-2 跑 5 万事件透射率 44.666%，换官方 QGSP_BIC_HP 为 22.512%，差 1.98 倍"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0018.md"
+    },
+    {
+      "id": "PHYS-0019",
+      "title": "用步点判断「粒子穿过几何边界」",
+      "stage": 1,
+      "mechanism": "M13",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "fGeomBoundary"
+        ],
+        "checks": [
+          {
+            "kind": "same_line",
+            "patterns": [
+              "GetStepStatus",
+              "fGeomBoundary"
+            ],
+            "label": "在步点上判断几何边界"
+          }
+        ]
+      },
+      "verdict": "代码里在步点上判断「几何边界」（fGeomBoundary）。\n需要确认用的是前步点还是后步点。\n",
+      "question": "Geant4 把\"这一步穿过几何边界\"这个标志设在**后步点**上；\n前步点的状态是从上一步的后步点拷贝过来的。\n\n你这一行用的是前步点还是后步点？\n\n用错了的后果：会把\"上一步刚进到某个体积\"误当成\"这一步正在穿边界\"。\n\n实测：任务 T1-4 用了前步点，结果只捞到\"一步贯穿铅板、零碰撞\"的弹道粒子；\n<1 MeV 的伽马计数从 65 掉到 1，能谱形状整块丢失。\n",
+      "sources": [
+        "Geant4 11.2.2 source/processes/transportation/src/G4Transportation.cc:508 —— `stepData.GetPostStepPoint()->SetStepStatus(fGeomBoundary);`",
+        "Geant4 11.2.2 source/track/src/G4ParticleChangeForTransport.cc:96-104（后步点的体积是进入的那个）",
+        "Geant4 11.2.2 source/track/include/G4Step.icc:142-149（前步点状态是上一步后步点的拷贝）",
+        "本机实测：任务 T1-4 探针双判据对比 1000 事件，报 223 中子/75 伽马，正确值 439/200"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0019.md"
+    },
+    {
+      "id": "PHYS-0020",
+      "title": "把 track 的能量当成「刚产生时」的能量",
+      "stage": 6,
+      "mechanism": "M13",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetKineticEnergy"
+        ],
+        "checks": [
+          {
+            "kind": "present",
+            "pattern": "(?s)GetTrack\\(\\)\\s*;?.{0,400}?GetKineticEnergy\\(\\)",
+            "label": "对 track 读动能"
+          }
+        ]
+      },
+      "verdict": "代码里从 track 上读动能。需要确认读的时机对不对。\n",
+      "question": "track 上存的是\"现在\"的能量 —— 一步走完之后，这一步该扣的已经扣掉了。\n\n你要的如果是\"刚产生时\"的能量，应该读 step 的**前步点**（`GetPreStepPoint()->GetKineticEnergy()`）。\n\n实测：任务 T6-1 用 track 能量记录\"产生时刻\"的韧致辐射光子能量，\n576 个光子（占 28%）被记成 0 落进最低道 —— 韧致辐射谱形状看着还是对的\n（有 1/E 形状、有 511 keV 湮灭峰），肉眼看不出来。\n\n反过来说：如果你做的是\"径迹长度 kerma\"这类估计量，用当前能量反而是对的。\n所以这条是问题，不是结论。\n",
+      "sources": [
+        "Geant4 11.2.2 source/track/include/G4Track.hh（动能是 track 的当前状态）",
+        "Geant4 11.2.2 source/track/include/G4Step.icc（前步点 = 这一步开始时的状态）",
+        "本机实测：T6-1 只把 `tr->GetKineticEnergy()` 改成 `step->GetPreStepPoint()->GetKineticEnergy()`，同 1000 事件同随机数种子，0–0.2 MeV 道占比 0.35871→0.21719，全谱 L1 距离 0.2830"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0020.md"
+    },
+    {
+      "id": "PHYS-0021",
+      "title": "用「被定义步的过程名」判断次级粒子的来源",
+      "stage": 6,
+      "mechanism": "M13",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetProcessDefinedStep"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "用到了 GetProcessDefinedStep"
+          }
+        ]
+      },
+      "verdict": "代码里用 `GetProcessDefinedStep()` 取过程名。需要确认这是不是你要的那个\"来源\"。\n",
+      "question": "`GetProcessDefinedStep()` 给的是\"**这一步**被哪个过程定义\"。\n\n对次级粒子来说，它产生之后走的第一步往往由 `ionIoni` 或 `NoProcess` 定义，\n而不是产生它的那个过程。\n\n你要问的如果是\"这个粒子是**哪个过程产生出来**的\"，那要用\n`GetCreatorProcess()`。\n\n实测：任务 T3-2 用 `GetProcessDefinedStep()->GetProcessName()` 去筛\n\"中子作用产生的残余核\"，白名单里七个过程名一个都没匹配上 ——\n表格输出全空（只有表头），程序退出码 0、没有任何报错。\n",
+      "sources": [
+        "Geant4 11.2.2 source/track/include/G4Track.hh —— `GetCreatorProcess()` 返回产生该 track 的过程",
+        "Geant4 11.2.2 source/track/include/G4Step.hh —— `GetProcessDefinedStep()` 返回定义这一步的过程",
+        "本机实测（T3-2 调试版，300 事件）：`GetProcessDefinedStep` 的过程名只出现 ionIoni / NoProcess / Radioactivation / hIoni / conv；`GetCreatorProcess` 实测 neutronInelastic 489 次、hadElastic 86 次、Radioactivation 96 次"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0021.md"
+    },
+    {
+      "id": "PHYS-0022",
+      "title": "代码里硬编码了两张以上的数值表（谱线表）",
+      "stage": 2,
+      "mechanism": "M14",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "(?s)\\[\\s*\\w*\\s*\\]\\s*=\\s*\\{[^{}]*,[^{}]*,[^{}]*,[^{}]*\\}.*\\[\\s*\\w*\\s*\\]\\s*=\\s*\\{[^{}]*,[^{}]*,[^{}]*,[^{}]*\\}"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "两张以上的数值表"
+          }
+        ]
+      },
+      "verdict": "代码里有两张以上的数值表（通常是「能量 + 强度」）。这些数需要逐条核对出处。\n",
+      "question": "程序里有两张以上的数值表，多半是\"发射线能量 + 强度\"这种形式。\n\n请逐条核对：**每个数是从哪个文件、哪一版来的？**\n\n实测（这一批任务里最典型的两例）：\n- T6-4 把 Ir-192 的 604.4 keV 那条线强度写成 **82.2**，正确值 **8.2**\n  —— 抄写时换了位。该峰计数从 15 掉到 1。\n- T3-4 六条强度里错了三条：Co-60 的两条写成 0.60（应约 1.00，偏低 1.67 倍），\n  Na-24 的 2.754 MeV 写成 0.50（应约 1.00，偏低 2 倍）。\n\n两处都是\"数字写错\"，不是\"算错\" —— 靠看代码逻辑发现不了，只能核对出处。\n\n可核对的地方：\n- Ir-192：本机 Geant4 自带\n  `/home/shark/geant4/11.2.2-install/share/Geant4/examples/advanced/brachytherapy/iridium_source_primary.mac`\n- Co-60 / Na-24 等：本机 Geant4 数据目录里的放射性衰变数据（`G4LEVELGAMMADATA` / `z*.a*` 文件）\n",
+      "sources": [
+        "本机实测：T6-4 `code/T6-4/code.cc:53` 的强度表 `{28.7,29.7,82.7,47.8,4.5,82.2,0.3}`；按同表其余 6 条线标定比值恒为 0.43，反推该条应为 8.22%",
+        "本机实测：T3-4 `code/T3-4/code.cc:24` 的 `gI[NL] = {1.00, 0.60, 0.60, 1.00, 0.27, 0.50}`；本机 z27.a60 显示 Co-60 两条 γ 强度均约 1.00",
+        "本机文件：/home/shark/geant4/11.2.2-install/share/Geant4/examples/advanced/brachytherapy/iridium_source_primary.mac"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0022.md"
+    },
+    {
+      "id": "PHYS-0023",
+      "title": "算了「效率」，但代码里没有任何立体角 / 几何接受度",
+      "stage": 6,
+      "mechanism": "M6",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "效率|全能峰|efficiency|Efficiency"
+        ],
+        "checks": [
+          {
+            "kind": "missing",
+            "pattern": "立体角|solid|atan|acos|Omega|接受度|acceptance",
+            "label": "几何接受度计算"
+          }
+        ]
+      },
+      "verdict": "代码里在算\"效率\"，但没有任何立体角或几何接受度的计算。\n",
+      "question": "你算的这个\"效率\"，**分母是什么**？\n\n如果是点源，探测器对源张的立体角就是上限，必须算进去；\n如果算的是平行束，那分母就是束流截面。\n\n两者结果差一个量级，但打印出来都是\"一个百分比\"，看不出区别。\n\n实测：任务 T4-1 用固定方向的点枪（相当于零发散平行束），\n报出全能峰效率 39.5%。而点源在 5 cm 处对 r=3 cm 晶体的几何接受度只有 7.13%\n—— **超几何上限 11.8 倍**，应该约 2.8%。\n\n任务 T4-2 同类问题更夸张：注释写\"点源在轴线上，距晶体中心 16 cm\"，\n代码却是固定方向，超上限 44 倍。\n",
+      "sources": [
+        "本机实测：任务 T4-1 报全能峰效率 39.545%（峰窗 ±1 keV），点源 5 cm 几何接受度 ½(1−cos(atan(3/5)))=7.13%",
+        "本机实测：任务 T4-2 注释（`code/T4-2/code.cc:35`）写\"点源在轴线上，距晶体中心 16 cm\"，代码（`code/T4-2/code.cc:67-68`）是 `(0,0,-8cm)` + `(0,0,1)` 固定方向，几何接受度 2.28%"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0023.md"
+    },
+    {
+      "id": "PHYS-0024",
+      "title": "注释说「点源」，代码里发射方向却是写死的常量",
+      "stage": 3,
+      "mechanism": "M6",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "点源"
+        ],
+        "checks": [
+          {
+            "kind": "present",
+            "pattern": "SetParticleMomentumDirection\\(\\s*G4ThreeVector\\(\\s*[-\\d.]",
+            "label": "写死的发射方向"
+          }
+        ]
+      },
+      "verdict": "注释里写了\"点源\"，但发射方向是一个写死的常量。\n",
+      "question": "\"点源 + 写死的发射方向\"= 一束**平行束**，不是点源。\n\n两者的差别：\n- 点源：粒子从一点向各方向发散，到远处按 1/r² 摊开\n- 平行束：粒子都朝同一个方向，不摊开\n\n对探测效率、对远处的注量率，两者结果完全不同。\n\n实测：任务 T4-2 注释写\"点源在轴线上，距晶体中心 16 cm\"，\n代码却是 `(0,0,-8cm)` + `(0,0,1)` 固定方向 ——\n几何接受度只有 2.28%，报出的效率超上限 44 倍。\n\n请确认你要的是哪一种。\n",
+      "sources": [
+        "本机实测：任务 T4-2 `code/T4-2/code.cc:35` 注释 vs `code/T4-2/code.cc:67-68` 代码",
+        "本机实测：任务 T4-1（无\"点源\"注释但同类写法）效率超几何上限 11.8 倍"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0024.md"
+    },
+    {
+      "id": "PHYS-0025",
+      "title": "用了闪烁体，但没设「猝灭系数」（Birks）",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "SCINTILLATIONYIELD"
+        ],
+        "checks": [
+          {
+            "kind": "missing",
+            "pattern": "Birks",
+            "label": "猝灭系数（Birks）"
+          }
+        ]
+      },
+      "verdict": "程序里设了闪烁体的光产额，但没有任何地方设猝灭系数（Birks）。\nGeant4 默认**不淬灭**（系数为 0），重带电粒子的光产额会被系统性高估。\n程序不会报错，不会提示，输出照常。\n",
+      "sources": [
+        "Geant4 11.2.2 source/processes/electromagnetic/utils/src/G4EmSaturation.cc:93-96 —— 仅当 bfactor>0 才做淬灭",
+        "Geant4 11.2.2 source/materials/src/G4IonisParamMat.cc:61 —— `fBirks = 0.` 默认值",
+        "本机实测：T4-3 补上聚苯乙烯的 Birks 系数（0.07943 mm/MeV，取自 G4EmSaturation.cc:274-277 内建表 Hirschberg 1992）后，中子光产额 10000/MeV → 1780/MeV，伽马/中子光比 3.32 → 0.74（反号）"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0025.md"
+    },
+    {
+      "id": "PHYS-0026",
+      "title": "程序里有「死层」体积",
+      "stage": 6,
+      "mechanism": "M6",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "dead|Dead"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "死层体积"
+          }
+        ]
+      },
+      "verdict": "程序里有\"死层\"体积。需要确认\"探测到\"的判据怎么写的。\n",
+      "question": "程序里有\"死层\"（dead layer）体积。\n\n请确认\"探测到\"的判据 —— **死层里的能量沉积不该算作探测到**。\n死层的作用恰恰是\"粒子在这里损失能量但不产生信号\"。\n\n实测：任务 T4-4 的判据写成\n`if (g_eCry + g_eDead > 0.) g_any[g_cur]++;`\n—— 死层沉积也算\"探测到\"。后果是探测效率随死层厚度几乎不变\n（0/0.1/1/3/10 mm 死层 → 59.95 / 58.60 / 59.80 / 61.45 / 59.60 %）。\n\n只算灵敏区时，同一组数据是 59.95 / 58.55 / 58.50 / 56.15 / **43.00** ——\n10 mm 死层下低报 1.39 倍。\n\n顺带：该程序 `code/T4-4/code.cc:24` 的 `kR=2cm`、`kGap=2cm` 让相邻体积\n重叠 2 cm，而运行日志**没有任何 overlap 警告** —— Geant4 默认不做这项检查。\n",
+      "sources": [
+        "本机实测：T4-4 `code/T4-4/code.cc:48` 的 `if (g_eCry + g_eDead > 0.) g_any[g_cur]++;`",
+        "本机实测：T4-4 死层 0/0.1/1/3/10 mm → 效率 59.95/58.60/59.80/61.45/59.60%（含死层）；只算灵敏区 → 59.95/58.55/58.50/56.15/43.00%",
+        "本机实测：T4-4 相邻体积重叠 2 cm，运行日志无 overlap 告警（`G4PVPlacement` 末参 `pSurfChk=false` 为默认值）"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0026.md"
+    },
+    {
+      "id": "PHYS-0027",
+      "title": "用球体做灵敏体积（微剂量学）",
+      "stage": 4,
+      "mechanism": "M7",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4Orb"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "球体灵敏体积"
+          }
+        ]
+      },
+      "verdict": "你用了球体做灵敏体积。需要确认线能的分母。\n",
+      "question": "球体里的\"平均弦长\"是 **4V/S = 4r/3**（用半径算），**不是直径**。\n\n线能 y = 沉积能 ÷ 平均弦长。分母选错，整个谱按同一个比例偏。\n\n实测：任务 T5-1 用 `new G4Orb(\"Cavity\", 0.5*um)`（第二参数是**半径**），\n分母却写死 1 µm（= 直径）。球平均弦长应为 0.6667 µm，全谱偏小 **1.5 倍**。\n只把分母改成 0.6667 µm（物理一个字不动），平均线能从 25.88 变成 38.81 keV/µm，\n比值恰好 1.5000。\n\n同一批的 T5-3 用了正确的 `4.*kR/3.`，是对照组。\n",
+      "sources": [
+        "球几何：V = 4πr³/3，S = 4πr²，平均弦长 l̄ = 4V/S = 4r/3",
+        "本机实测：T5-1 `code/T5-1/code.cc:51` 用 `G4Orb(\"Cavity\", 0.5*um)`，`code/T5-1/code.cc:31` 注释与 `:34` 分母写\"1 um\"",
+        "本机实测（A/B 对照，只改分母不动物理）：平均线能 25.8765 → 38.8148 keV/µm，比值 1.5000",
+        "对照：T5-3 `code/T5-3/code.cc:26,70` 用 `4.*kR/3./um`（= 6.667 µm），判定正确"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0027.md"
+    },
+    {
+      "id": "PHYS-0028",
+      "title": "用了跨事件的去重集合，但没在每事件清空",
+      "stage": 7,
+      "mechanism": "M5",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "\\.insert\\("
+        ],
+        "checks": [
+          {
+            "kind": "missing",
+            "pattern": "BeginOfEventAction",
+            "label": "每事件清空的钩子"
+          }
+        ]
+      },
+      "verdict": "代码里用了 `insert(...).second` 这种\"只记一次\"的写法，\n但没有任何 `BeginOfEventAction`。\n",
+      "question": "Geant4 里 **trackID 是每个事件从头编号的** —— 每个新事件都从 1 开始。\n\n如果这个\"已见过\"的集合只在 `BeginOfRunAction` 清空，\n那么第二个事件开始，trackID 就会和第一个事件撞号，\n新粒子会被当成\"已经见过\"而**静默丢弃**。\n\n正确做法：在 `BeginOfEventAction` 里清空。\n\n实测：任务 T6-2 正是这个写法。只加一个每事件清空、同样 100 个质子，\n中子产额从 1163 变成 1785（11.63 → 17.85 个/质子，**低 53%**）。\n\n而且它的答案随事件数乱跳：\nN=1/2/3/12/30/100 → 19.0 / 25.5 / 17.0 / 19.33 / 17.1 / 11.63\n—— 这是个**物理量不该有的行为**，是这件事的第二个破绽。\n",
+      "sources": [
+        "Geant4 11.2.2 source/run/src/G4RunManager.cc:445 —— `auto anEvent = new G4Event(i_event);`（trackID 每事件重排）",
+        "本机实测：T6-2 `code/T6-2/code.cc:32` 用 `gSeen.insert(t->GetTrackID()).second`，`code/T6-2/code.cc:64-66` 只在 `BeginOfRunAction` 清空；全文件无 `BeginOfEventAction`",
+        "本机实测（A/B，同样 100 质子）：产额 1163 → 1785（+53%）",
+        "本机实测：报告值随 BeamOn(N) 漂移 N=1/2/3/12/30/100 → 19.0/25.5/17.0/19.33/17.1/11.63"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0028.md"
+    },
+    {
+      "id": "PHYS-0029",
+      "title": "事件数写死在代码里",
+      "stage": 7,
+      "mechanism": "M6",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "(?i)const\\s+(G4int|int|long)\\s+\\w*[Nn]\\w*\\s*=\\s*\\d+"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "写死的事件数"
+          }
+        ]
+      },
+      "verdict": "事件数写死在代码里，而且不接受命令行覆盖。\n",
+      "question": "请确认这个数是够的，并且把**不确定度**一起报出来。\n\n实测两例：\n- T2-3 写死 100 个事件。用 20 个随机种子各跑 100 事件，\n  结果极差 **3 倍**（0.671e-14 ~ 1.987e-14 Gy/中子），相对统计误差 27%。\n  但程序打印 6 位有效数字、不给误差、退出码 0。\n- T6-3 写死 100 事件喂 300 个能量箱，交付的深度剂量曲线是统计噪声主导。\n\n这类问题的共同点：**数字看起来很精确，其实是噪声**。\n程序给的有效数字远超它实际的分辨能力，这本身就是误导。\n",
+      "sources": [
+        "本机实测：T2-3 `code/T2-3/code.cc:79` 硬编码 nEvents=100 且不接受命令行覆盖",
+        "本机实测：T2-3 20 个随机种子 × 100 事件 → 0.671e-14 ~ 1.987e-14 Gy/中子，20 种子均值 1.2651e-14，相对统计误差 27%",
+        "本机实测：T2-3 同一程序跑 10000 事件收敛值 1.25249e-14（与 100 事件的交付值 1.27686e-14 只差 1.9% —— 属随机误差，不是系统偏差）",
+        "本机实测：T6-3 写死 beamOn 100，交付曲线锯齿由统计噪声主导"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0029.md"
+    },
+    {
+      "id": "PHYS-0030",
+      "title": "程序输出了「活度」这类绝对量",
+      "stage": 8,
+      "mechanism": "M8",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "Bq"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "输出绝对量"
+          }
+        ]
+      },
+      "verdict": "程序输出了绝对值（Bq 之类）。\n",
+      "question": "请把从源强到最终结果的**完整公式和单位链**写出来，逐步标出每个量的单位。\n\n另外，如果这是活化产物，请列出该核素**全部**主要发射线及强度，\n并说明你只用了其中哪几条、为什么。\n\n实测两例（都是\"看着对、其实错\"）：\n- T3-1：公式多除了一个衰变常数、少乘了束流面积，净放大 **1.2e7 倍**。\n  但它的时间演化曲线形状完全正确（365 天 → 0.8769）—— 只看曲线发现不了。\n- T3-3：只发 Na-24 的 1.369 MeV 一条 γ，漏掉 2.754 MeV 主线。\n  按 NIST 的质能吸收系数，2.754 MeV 那条占空气比释动能的 62.1% ——\n  结果低 **2.59 倍**。\n\n一个日常核对法：把中间量按量纲一路乘下来，看看最后是不是 Bq。\n单位链上错一步，数值就错一个量级，但程序不会报错。\n",
+      "sources": [
+        "本机实测：T3-1 `code/T3-1/code.cc:87` 的 `Rp = phi * pCap / V`（少乘束流面积 πR²=19.635 cm²），`:90` 的 `A0 = Rp*(1-exp(-lam*Tirr))/lam`（多除 lam）",
+        "本机实测：T3-1 打印 A0=1.2342e13 Bq/cm³，正确值 1.0098e6 Bq/cm³（净放大 1.222e7 倍）；交叉验证：打印值 × 样品体积 = 2.4234e14 = 正确的 Co-60 原子数密度",
+        "本机实测：T3-3 只发 1.369 MeV；按 NIST 空气 µ_en/ρ（1.369→0.0261、2.754→0.0213），2.754 线占空气比释动能 62.1%；正确 D_dot(1 GBq,10cm)=4.32e4 µGy/h vs 实测 1.67e4 µGy/h"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0030.md"
+    },
+    {
+      "id": "PHYS-0031",
+      "title": "热中子散射截面库 (TSL) 与材料名规范",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4ThermalNeutrons",
+          "G4NeutronHPThermalScattering"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "涉及热中子材料散射库与命名规范"
+          }
+        ]
+      },
+      "verdict": "水或聚乙烯等含氢减速剂中，热中子输运必须注册 G4ThermalNeutrons 物理构造器，且材料名称必须使用 NIST 规范名（如 G4_WATER、G4_POLYETHYLENE）。若自建材料命名非标准或未挂载 S(a,b) 库，中子能谱将严重偏硬。\n",
+      "sources": [
+        "Geant4 Physics Reference Manual: Thermal Neutron Scattering",
+        "NIST Material Database"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0031.md"
+    },
+    {
+      "id": "PHYS-0032",
+      "title": "方差缩减几何重要性分裂权重记账",
+      "stage": 7,
+      "mechanism": "M3",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetWeight"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "方差缩减计分是否累加粒子权重"
+          }
+        ]
+      },
+      "verdict": "在采用几何重要性分裂或权重窗等方差缩减技术时，计分器累加物理量必须乘粒子动态权重 GetWeight()。若直接统计粒子数，出射通量将被错误虚高数千倍。\n",
+      "sources": [
+        "Geant4 Book for Application Developers: Variance Reduction",
+        "Monte Carlo Weight Window Principles"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0032.md"
+    },
+    {
+      "id": "PHYS-0033",
+      "title": "超薄靶低能光子次级电子产生截断",
+      "stage": 4,
+      "mechanism": "M5",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "SetCutValue",
+          "SetCut",
+          "mm",
+          "um"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "超薄靶微米级产生截断设置"
+          }
+        ]
+      },
+      "verdict": "靶件厚度小于 1 mm 时（如 0.1 mm 铜箔），Geant4 默认的 0.7 mm 产生截断会导致低能光电效应次级电子无法作为独立粒子产生，其能量就地沉积，造成假穿透与透射电子数为零。\n",
+      "sources": [
+        "Geant4 Users Guide for Application Developers: Range Cuts"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0033.md"
+    },
+    {
+      "id": "PHYS-0034",
+      "title": "多层同心几何共面重叠与卡步校验",
+      "stage": 2,
+      "mechanism": "M2",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "pSurfChk",
+          "G4PVPlacement"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "检查同心几何边界重叠与重叠检测参数"
+          }
+        ]
+      },
+      "verdict": "多层同心圆柱或球体放置时，内层外边界与外层内边界若存在共面浮点重叠，会导致导航仪卡步死锁或丢失粒子。必须采用层级嵌套结构并开启 pSurfChk=true。\n",
+      "sources": [
+        "Geant4 Geometry Navigator: Overlapping Volumes"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0034.md"
+    },
+    {
+      "id": "PHYS-0035",
+      "title": "大气宇宙线天顶角与动量角抽样",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "cos",
+          "theta",
+          "ang"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "宇宙线源天顶角平方余弦角分布抽样"
+          }
+        ]
+      },
+      "verdict": "海平面大气宇宙线缪子天顶角严格遵循 cos^2(theta) 分布。将其简化为单向垂直平行束会低估斜向入射粒子的几何斜程吸收，导致地下深处探测通量虚高 2 倍以上。\n",
+      "sources": [
+        "Particle Data Group (PDG): Cosmic Rays in the Atmosphere"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0035.md"
+    },
+    {
+      "id": "PHYS-0036",
+      "title": "穿墙圆柱管道直通流与反散射解耦",
+      "stage": 7,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "duct",
+          "uncollided",
+          "scatter"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "管道出口通量直通项与散射项解耦计分"
+          }
+        ]
+      },
+      "verdict": "穿墙管道出口处中子通量包含直通准直分量与管壁反散射分量。需确认计分器是否解耦统计了弹道未碰撞粒子与管壁散射粒子。\n",
+      "question": "请确认计分器是否区分了未经碰撞的直通几何立体角流强与经过孔壁反散射的慢化流强？\n",
+      "sources": [
+        "NCRP Report No. 51: Radiation Protection Design for Particle Accelerator Facilities"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0036.md"
+    },
+    {
+      "id": "PHYS-0037",
+      "title": "超短高剂量率脉冲时间归一化链条",
+      "stage": 8,
+      "mechanism": "M3",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "dose_rate",
+          "pulse",
+          "us",
+          "second"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "脉冲瞬时剂量率时间归一化"
+          }
+        ]
+      },
+      "verdict": "高剂量率脉冲束轰击时，单脉冲瞬时峰值吸收剂量率分母必须除以脉冲持续时间 tau（如 5 us），严禁错误除以宏观重复周期（如 1 s），否则低估数十万倍。\n",
+      "sources": [
+        "FLASH Radiotherapy Beam Parameter Definitions: Instantaneous vs Average Dose Rate"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0037.md"
+    },
+    {
+      "id": "PHYS-0038",
+      "title": "宽谱中子辐射权重因子 w_R(E) 积分",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "w_R",
+          "weight",
+          "sievert",
+          "dose_equiv"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "中子当量剂量连续辐射权重积分"
+          }
+        ]
+      },
+      "verdict": "中子当量剂量换算中，辐射权重因子 w_R(E) 随动能非线性剧烈变化。直接乘以固定常数（如 20）会导致中子当量剂量严重高估。\n",
+      "question": "你的代码计算中子当量剂量时，是将 w_R 设为了固定常数 20，还是根据中子能谱进行了连续积分加权？\n",
+      "sources": [
+        "ICRP Publication 103: The 2007 Recommendations of the International Commission on Radiological Protection"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0038.md"
+    },
+    {
+      "id": "PHYS-0039",
+      "title": "纳米尺度电离簇尺寸与宏观能损辨识",
+      "stage": 7,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "cluster",
+          "ionization",
+          "edep"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "纳米靶区离散电离碰撞数统计"
+          }
+        ]
+      },
+      "verdict": "在 DNA 纳米尺度（~2 nm），放射生物损伤取决于单事件离散电离对数分布（ICSD），不能用宏观连续能量损耗 dE 除以平均电离能 W 近似。\n",
+      "question": "请确认纳米靶区内的观测量是单次电离事件的离散碰撞计数，还是连续能量沉积的经验折算？\n",
+      "sources": [
+        "ICRU Report 90: Nanodosimetry in Radiation Therapy"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0039.md"
+    },
+    {
+      "id": "PHYS-0040",
+      "title": "重金属纳米微颗粒界面微步长限制",
+      "stage": 4,
+      "mechanism": "M6",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "SetUserLimits",
+          "G4StepLimiter",
+          "UserLimits"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "纳米颗粒界面处设置微米/纳米级最大步长"
+          }
+        ]
+      },
+      "verdict": "重金属金颗粒与水介质交界面两侧光电截面突变数百倍。未在界面处挂载 G4StepLimiter 限制最大步长，会导致低能 Auger 电子跳过纳米界面，剂量增强比（DEF）计算严重失真。\n",
+      "sources": [
+        "Nanoparticle Radiation Enhancement: Micro-scale Step Size Effects"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0040.md"
+    },
+    {
+      "id": "PHYS-0041",
+      "title": "旋转照射动量方向与源坐标同步变换",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "cos",
+          "sin",
+          "SetParticleMomentumDirection",
+          "SetParticlePosition"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "旋转源坐标变换与动量指向同步更新"
+          }
+        ]
+      },
+      "verdict": "模拟源绕中心旋转 360 度照射时，源位置 (x, y) 旋转的同时，粒子动量方向必须同步旋转并始终指向中心靶区 (-cos(theta), -sin(theta), 0)。动量方向保持常数会导致射线射向虚空。\n",
+      "sources": [
+        "Radiation Therapy Isocentric Gantry Source Modeling"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0041.md"
+    },
+    {
+      "id": "PHYS-0042",
+      "title": "高 LET 辐射微剂量学饱和修正因子",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "y_sat",
+          "saturation",
+          "overkill"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "微剂量学高线能 y* 饱和修正"
+          }
+        ]
+      },
+      "verdict": "在重离子与质子布拉格峰末端，超高线能（y > 100 keV/um）会导致过量杀灭（Overkill）。生物有效剂量计算应引入饱和有效线能 y* 修正，直接线性外推会导致剂量高估 40%。\n",
+      "question": "请确认在布拉格峰末端计算 RBE 加权剂量时，是否考虑了微剂量学饱和参数 y* (y0 ~ 125 keV/um)？\n",
+      "sources": [
+        "Microdosimetric Biological Effect Modeling: The Dual Action Theory"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0042.md"
+    },
+    {
+      "id": "PHYS-0043",
+      "title": "放射性衰变母子链 Bateman 方程与分支比",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          0.87,
+          0.88,
+          "bateman",
+          "lambda"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "母子衰变链 Bateman 方程与核素分支比核对"
+          }
+        ]
+      },
+      "verdict": "Mo-99 衰变至 Tc-99m 存在分支比（BR ≈ 87.5%），且子体活度演化必须采用二阶 Bateman 差分方程。当作 100% 分支比或单指数衰变会导致峰值活度与达峰时间严重失真。\n",
+      "question": "请确认代码中 Tc-99m 活度演化公式是否使用了含分支比（0.875）的 Bateman 二阶解？\n",
+      "sources": [
+        "NNDC Nuclear Decay Data: Mo-99 / Tc-99m Decay Chain"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0043.md"
+    },
+    {
+      "id": "PHYS-0044",
+      "title": "快中子门槛反应 (n,2n) 截面与阈能衔接",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetAtomicNumber",
+          "GetAtomicMass",
+          "Cu62"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "快中子门槛反应次级产物核精准识别"
+          }
+        ]
+      },
+      "verdict": "14 MeV 快中子打铜产生 Cu-62 属于门槛反应 (n,2n)（阈能约 10.9 MeV）。统计产物核时必须严格匹配原子序数与原子量（Z=29, A=62），严禁将散射退激的 Cu-63 混入活化产额。\n",
+      "sources": [
+        "ENDF/B-VIII.0: Cu-63(n,2n)Cu-62 Cross Section Evaluation"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0044.md"
+    },
+    {
+      "id": "PHYS-0045",
+      "title": "高能电子/伽马光核反应中子发射物理",
+      "stage": 4,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4PhotonuclearPhysics",
+          "G4PhotoNuclearProcess"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "高能光子打靶物理列表注册光核物理"
+          }
+        ]
+      },
+      "verdict": "高能电子轰击厚靶产生轫致辐射并通过巨共振发生 (gamma, n) 光核反应放出中子。物理列表若未显式注册 G4PhotoNuclearPhysics，系统将完全无法产生光核中子，输出恒为 0。\n",
+      "sources": [
+        "Geant4 Physics Reference Manual: Photonuclear Reactions"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0045.md"
+    },
+    {
+      "id": "PHYS-0046",
+      "title": "循环流动介质活化停留时间与有效体积",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "flow",
+          "residence",
+          "velocity",
+          "tau"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "循环冷却水活化回路流体动力学停留时间计算"
+          }
+        ]
+      },
+      "verdict": "堆芯冷却水受中子活化（如 O-16(n,p)N-16）时，流体处于高速流动状态。有效辐照时间取决于单次通过堆芯的停留时间 t = L/v，且在堆外回路输运时快速衰变。不能套用静态靶长期辐照公式。\n",
+      "question": "请确认冷却水 N-16 比活度计算中是否计入了水流流速 v 决定的堆芯停留时间与回路衰变因子？\n",
+      "sources": [
+        "Nuclear Reactor Engineering: Reactor Coolant System Activation"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0046.md"
+    },
+    {
+      "id": "PHYS-0047",
+      "title": "裂变产物衰变热发热功率能量记账",
+      "stage": 7,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "decay_heat",
+          "gamma",
+          "beta"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "裂变产物衰变热完整能量记账包含带电粒子与光子"
+          }
+        ]
+      },
+      "verdict": "裂变产物停堆后的衰变发热功率由带电粒子（主要是 beta 粒子及内转换电子）与延迟伽马射线共同贡献。记账时若只计 beta 能量而忽略伽马光子能损，发热功率将被低估约 40%。\n",
+      "question": "请确认衰变发热功率记账中是否同时包含了带电轻粒子自吸收与伽马辐射的能量沉积？\n",
+      "sources": [
+        "ANSI/ANS-5.1-2014: Decay Heat Power in Light Water Reactors"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0047.md"
+    },
+    {
+      "id": "PHYS-0048",
+      "title": "放射性体内滞留生物清除有效半衰期",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "lambda_biol",
+          "lambda_eff",
+          "clearance"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "内照射生物清除代谢常数与物理衰变耦合"
+          }
+        ]
+      },
+      "verdict": "放射性核素在器官（如肺部）的滞留活度受物理衰变与生物代谢生理清除的双重控制：lambda_eff = lambda_p + lambda_b。若仅使用物理半衰期，累积滞留活度将被高估 5~8 倍。\n",
+      "question": "请确认代码计算器官累积活度时，是否计入了组织器官对该核素的生物代谢清除常数 lambda_b？\n",
+      "sources": [
+        "ICRP Publication 119: Compendium of Dose Coefficients based on ICRP Publication 60"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0048.md"
+    },
+    {
+      "id": "PHYS-0049",
+      "title": "探测器高斯能量展宽 FWHM 与标准差转换",
+      "stage": 7,
+      "mechanism": "M3",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          2.355,
+          2.3548,
+          "fwhm"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "高斯展宽抽样标准差除以 2.355"
+          }
+        ]
+      },
+      "verdict": "探测器能量分辨率通常给出半高宽 FWHM。在调用高斯随机抽样展宽时，标准差必须输入 sigma = FWHM / 2.355。若直接传入 sigma = FWHM，全能峰宽将被放大 2.355 倍（方差大 5.5 倍）。\n",
+      "sources": [
+        "Knoll: Radiation Detection and Measurement (4th Ed), Peak Broadening Formula"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0049.md"
+    },
+    {
+      "id": "PHYS-0050",
+      "title": "探测器粒子飞行时间 TOF 步点时钟选取",
+      "stage": 7,
+      "mechanism": "M13",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetLocalTime",
+          "GetGlobalTime"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "飞行时间测量读取全局时间 GetGlobalTime"
+          }
+        ]
+      },
+      "verdict": "在飞行时间法（TOF）测量中，记录从源点发射到探测器的时间必须调用 step->GetPostStepPoint()->GetGlobalTime()。误读 GetLocalTime() 将只返回当前径迹的局部生存时间，绝对飞行时间丢失。\n",
+      "sources": [
+        "Geant4 Track and Step Timing Classes: GlobalTime vs LocalTime vs ProperTime"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0050.md"
+    },
+    {
+      "id": "PHYS-0051",
+      "title": "闪烁晶体外表面光学光学边界属性",
+      "stage": 2,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4OpticalSurface",
+          "G4LogicalBorderSurface",
+          "G4LogicalSkinSurface"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "光学输运晶体表面配置光学表面属性"
+          }
+        ]
+      },
+      "verdict": "闪烁晶体折射率高（~1.8），若出光面未配置 G4OpticalSurface 与反射/漫反射模型，光学光子在界面处会由于纯折射率全反射而被无限滞留在晶体内自吸收，出光效率降为 0。\n",
+      "sources": [
+        "Geant4 Optical Physics User Guide: Boundary Process and Optical Surfaces"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0051.md"
+    },
+    {
+      "id": "PHYS-0052",
+      "title": "半导体探测器电荷涨落 Fano 因子加权",
+      "stage": 7,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "fano",
+          0.115,
+          0.11
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "半导体探测器电荷涨落引入 Fano 因子"
+          }
+        ]
+      },
+      "verdict": "硅/锗半导体探测器中产生电子空穴对的起伏受 Fano 因子抑制（硅中 F ≈ 0.115）。若使用纯泊松方差 sigma^2 = N，计算出的电荷本征涨落方差将虚高 9 倍，极限分辨严重恶化。\n",
+      "question": "请确认在计算电离电荷信号统计涨落时，方差是否乘以了半导体材料的 Fano 因子（~0.115）？\n",
+      "sources": [
+        "Knoll: Radiation Detection and Measurement, The Fano Factor in Semiconductors"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0052.md"
+    },
+    {
+      "id": "PHYS-0053",
+      "title": "高计数率脉冲堆积与可麻痹死时间判据",
+      "stage": 7,
+      "mechanism": "M3",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "dead_time",
+          "tau",
+          "dt"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "探测器死时间相邻脉冲到达时间间隔判断"
+          }
+        ]
+      },
+      "verdict": "在高计数率下模拟死时间计数损失，必须记录相邻粒子到达探测器的时间戳并判断 delta_t < tau。未实现脉冲到达时间差判定会导致无论粒子到达多密集都不发生任何死时间损失。\n",
+      "sources": [
+        "Knoll: Radiation Detection and Measurement, Paralyzable and Nonparalyzable Dead Time Models"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0053.md"
+    },
+    {
+      "id": "PHYS-0054",
+      "title": "介质材料折射率属性与契伦科夫辐射使能",
+      "stage": 3,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "RINDEX",
+          "MaterialPropertiesTable",
+          "AddProperty"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "契伦科夫介质材料属性表中配置 RINDEX"
+          }
+        ]
+      },
+      "verdict": "触发契伦科夫辐射的前提是材料的 G4MaterialPropertiesTable 中必须注册折射率属性 RINDEX。即使在物理列表中注册了 G4Cerenkov 构造器，若介质无 RINDEX，产生的契伦科夫光子数恒为 0。\n",
+      "sources": [
+        "Geant4 User Guide: Cerenkov Process Prerequisites"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0054.md"
+    },
+    {
+      "id": "PHYS-0055",
+      "title": "随机细胞群多敏感体积单事件击中解耦",
+      "stage": 7,
+      "mechanism": "M11",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetCopyNo",
+          "copyNo",
+          "map"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "细胞群多敏感体积按 CopyNo 独立解耦累加"
+          }
+        ]
+      },
+      "verdict": "在微观细胞群模拟中，统计各个细胞核被粒子径迹击中的泊松分布时，必须按各个微球的复制编号（CopyNo）分别独立累加沉积能。若使用全局单一累加器，会将整个细胞群混淆为单一靶区。\n",
+      "sources": [
+        "Microdosimetry and Cell Survival Modeling in Complex Geometries"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0055.md"
+    },
+    {
+      "id": "PHYS-0056",
+      "title": "BNCT 伴随粒子产生顶点对齐",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "SetParticlePosition",
+          "G4ThreeVector"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "BNCT 伴随粒子 alpha 与 Li-7 共享同一反应顶点坐标"
+          }
+        ]
+      },
+      "verdict": "热中子硼中子俘获反应 B-10(n, alpha)Li-7 放出的 alpha 与 Li-7 属于同一反应点的伴随粒子。两粒子必须共享完全相同的局部初始空间坐标并呈背对背动量发射，严禁分别独立随机抽样发源。\n",
+      "sources": [
+        "IAEA-TECDOC-1223: Current Status of Neutron Capture Therapy"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0056.md"
+    },
+    {
+      "id": "PHYS-0057",
+      "title": "纳米低能电子径迹结构法 (Track Structure)",
+      "stage": 4,
+      "mechanism": "M6",
+      "severity": "medium",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4EmDNAPhysics",
+          "dna",
+          "StepLimiter"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "低能电子纳剂量学启用微步长或 Geant4-DNA"
+          }
+        ]
+      },
+      "verdict": "10 keV 以下低能电子在组织中输运时，标准凝聚历史算法（Condensed History）若使用粗步长，会彻底抹平电子在射程末端的剧烈 Bragg 尖峰电离。应使用 Geant4-DNA 或超精细微步长限制。\n",
+      "sources": [
+        "Geant4-DNA: Simulation of Early DNA Damage by Low-energy Electrons"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0057.md"
+    },
+    {
+      "id": "PHYS-0058",
+      "title": "辐射生物学线性二次模型 (LQ) 单击/双击分量",
+      "stage": 8,
+      "mechanism": "M12",
+      "severity": "medium",
+      "output": "question",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "lq",
+          "survival",
+          "exp"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "LQ 存活率模型宏观吸收剂量 D 与微观比能 z 辨识"
+          }
+        ]
+      },
+      "verdict": "线性二次模型（LQ）存活率公式 S = exp(-alpha*D - beta*D^2) 中的 D 是宏观靶区平均吸收剂量。若将单粒子单事件微观比能 z 直接代入该公式计算细胞存活率，会导致多次事件卷积效应脱落。\n",
+      "question": "请确认在评估细胞存活率时，是否严格区分了单事件微观比能谱 f1(z) 与宏观累积吸收剂量 D？\n",
+      "sources": [
+        "Radiobiology for the Radiologist (Hall & Giaccia), Linear-Quadratic Model"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0058.md"
+    },
+    {
+      "id": "PHYS-0059",
+      "title": "放射性微球近距离放疗连续 Beta 能谱抽样",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "beta",
+          "fermi",
+          "G4RadioactiveDecay"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "Y-90 放射源连续 Beta 射线谱抽样"
+          }
+        ]
+      },
+      "verdict": "钇-90（Y-90）微球发射的是连续三体 Beta 衰变谱（最大能量 2.28 MeV，平均能量约 0.93 MeV）。将其简化为固定单能电子发源会导致微球近壁超高剂量率失真近 3 倍。\n",
+      "sources": [
+        "ICRU Report 72: Dosimetry of Beta Rays and Other Low-Energy Electrons"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0059.md"
+    },
+    {
+      "id": "PHYS-0060",
+      "title": "辐射化学自由基扩散反应阶段注册",
+      "stage": 4,
+      "mechanism": "M12",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4EmDNAChemistry",
+          "chemistry",
+          "radical"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "水自由基产额模拟显式注册 G4EmDNAChemistry"
+          }
+        ]
+      },
+      "verdict": "水被质子照射产生水自由基（如 ·OH、eaq-）的化学产额（G 值）属于辐射化学扩散反应产物。物理列表中未注册 G4EmDNAChemistry 构造器时，输运结束后没有任何化学物种，产额全为 0。\n",
+      "sources": [
+        "Geant4-DNA: Water Radiolysis and Radical Diffusion Chemistry"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0060.md"
+    },
+    {
+      "id": "PHYS-0061",
+      "title": "强偏转磁场最大弦长与弦积分器精度配置",
+      "stage": 2,
+      "mechanism": "M6",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "G4ChordFinder",
+          "SetDeltaChord",
+          "chord"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "磁场偏转弯管设置 G4ChordFinder 最大弦长"
+          }
+        ]
+      },
+      "verdict": "高能质子在强偏转磁场中发生圆弧弯转，Geant4 步进积分器采用弦线逼近圆弧。未配置 G4ChordFinder 限制最大弦偏差（SetDeltaChord）会导致大步长弦线直接穿透弯曲管壁飞跃虚空。\n",
+      "sources": [
+        "Geant4 User Guide: Magnetic Field Stepper and Chord Finder Configuration"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0061.md"
+    },
+    {
+      "id": "PHYS-0062",
+      "title": "放射性衰变延迟中子通道与前驱核寿命",
+      "stage": 4,
+      "mechanism": "M1",
+      "severity": "medium",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "delayed",
+          "G4RadioactiveDecay"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "裂变产物衰变开启延迟中子发射通道"
+          }
+        ]
+      },
+      "verdict": "裂变产物 Br-87 衰变后伴随发射延迟中子。代码在配置放射性衰变模块时，若未使能延迟中子发射分支或排除了强子反冲核通道，会导致延迟中子产额被直接静默截断为 0。\n",
+      "sources": [
+        "Keepin: Physics of Nuclear Kinetics, Delayed Neutrons from Fission"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0062.md"
+    },
+    {
+      "id": "PHYS-0063",
+      "title": "裂变中子能谱 Watt 谱参数抽样解析公式",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "watt",
+          "sinh",
+          0.988,
+          2.249
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "U-235 裂变中子谱标准 Watt 参数抽样"
+          }
+        ]
+      },
+      "verdict": "U-235 热裂变出射中子谱遵循标准 Watt 谱：p(E) ∝ exp(-E/a)sinh(sqrt(bE))，其中推荐参数为 a ≈ 0.988 MeV, b ≈ 2.249 MeV^-1。误用 Maxwell 谱或参数颠倒会导致平均动能严重偏离 ~2.0 MeV。\n",
+      "sources": [
+        "ENDF/B-VIII.0: Prompt Fission Neutron Spectra (Watt Spectrum)"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0063.md"
+    },
+    {
+      "id": "PHYS-0064",
+      "title": "初始高斯能展动能下限非负截断保护",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "max",
+          0.0,
+          "G4RandGauss"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "高斯能展动能抽样后设置非负保护 Ek > 0"
+          }
+        ]
+      },
+      "verdict": "模拟具有高斯能展的粒子束时，高斯随机数抽样可能产生负动能尾巴。代码未设置非负动能截断保护（if (Ek <= 0) Ek = 1*eV），会导致粒子生成器接收负能量直接抛出致命异常或内核循环崩溃。\n",
+      "sources": [
+        "Geant4 Primary Generator Action: Kinetic Energy Bounds Check"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0064.md"
+    },
+    {
+      "id": "PHYS-0065",
+      "title": "圆形扩展面源径向均匀抽样平方根法则",
+      "stage": 5,
+      "mechanism": "M4",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "sqrt",
+          "G4UniformRand",
+          "radius"
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "圆形扩展面源半径抽样采用平方根 r = R * sqrt(xi)"
+          }
+        ]
+      },
+      "verdict": "在圆形面上均匀抽样粒子发射位置时，微元面积与半径关系为 dS = 2*pi*r*dr。半径抽样必须严格采用 r = R * sqrt(xi)。直接写为 r = R * xi 会导致中心粒子密度虚高数百倍，光斑虚假聚集。\n",
+      "sources": [
+        "Monte Carlo Sampling Methods: Uniform Sampling on Disk"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0065.md"
+    },
+    {
+      "id": "PHYS-0066",
+      "title": "次级强子产生顶点空间密度单次累加",
+      "stage": 7,
+      "mechanism": "M11",
+      "severity": "high",
+      "output": "violation",
+      "detect": "code",
+      "applies_to": [
+        "all"
+      ],
+      "status": "implemented",
+      "trigger": {
+        "source": "code",
+        "present": [
+          "GetCurrentStepNumber",
+          "GetStepNumber",
+          1
+        ],
+        "checks": [
+          {
+            "kind": "always",
+            "label": "次级粒子空间产生密度仅在首步 GetCurrentStepNumber()==1 记录"
+          }
+        ]
+      },
+      "verdict": "统计次级粒子在靶内的空间产生顶点分布时，必须仅在粒子诞生的第一步（GetCurrentStepNumber() == 1）记录其物理坐标。若在所有步进中重复累加，深度密度分布将被成百上千倍严重虚高扭曲。\n",
+      "sources": [
+        "Geant4 Stepping Action: Primary vs Secondary Vertex Tracking"
+      ],
+      "authors": [
+        "待填"
+      ],
+      "reviewed_by": [],
+      "_file": "PHYS-0066.md"
+    }
+  ]
+}

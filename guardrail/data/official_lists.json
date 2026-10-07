@@ -1,0 +1,321 @@
+{
+ "FTFP_BERT": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_ATL": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT_ATL",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_EMV": [
+  "Decay",
+  "G4EmStandard_opt1",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_EMX": [
+  "Decay",
+  "G4EmStandard_opt2",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_EMY": [
+  "Decay",
+  "G4EmStandard_opt3",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_EMZ": [
+  "Decay",
+  "G4EmStandard_opt4",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_GS": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_HP": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic FTFP_BERT_HP",
+  "ionInelasticFTFP_BIC",
+  "stopping"
+ ],
+ "FTFP_BERT_LIV": [
+  "Decay",
+  "G4EmLivermore",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_PEN": [
+  "Decay",
+  "G4EmPenelope",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_SS": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_BERT_TRV": [
+  "Decay",
+  "G4EmStandardGS",
+  "G4GammaLeptoNuclearPhys",
+  "hElastic_BEST",
+  "hInelastic FTFP_BERT_TRV",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_INCLXX": [
+  "\u0001",
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "IonINCLXX",
+  "hElasticWEL_CHIPS_XS",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTFP_INCLXX_HP": [
+  "\u0001",
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonINCLXX",
+  "hElasticWEL_CHIPS_HP",
+  "stopping"
+ ],
+ "FTFQGSP_BERT": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTFQGSP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "FTF_BIC": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic FTF_BIC",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "NuBeam": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelasticNuBeam",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QBBC": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "IonElasticPhysics",
+  "hElasticWEL_CHIPS_XS",
+  "hInelasticQBBC",
+  "ionPhysicsXS",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QGSP_BERT": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic QGSP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QGSP_BERT_HP": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "hInelastic QGSP_BERT_HP",
+  "ionInelasticFTFP_BIC",
+  "nElasticPhysics_HP",
+  "stopping"
+ ],
+ "QGSP_BIC": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "IonElasticPhysics",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic QGSP_BIC",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QGSP_BIC_HP": [
+  "Decay",
+  "G4EmStandard_opt4",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic QGSP_BIC_HP",
+  "ionInelasticFTFP_BIC",
+  "stopping"
+ ],
+ "QGSP_FTFP_BERT": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic QGSP_FTFP_BERT",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QGSP_INCLXX": [
+  "\u0001",
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "IonINCLXX",
+  "hElasticWEL_CHIPS_XS",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "QGSP_INCLXX_HP": [
+  "\u0001",
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonINCLXX",
+  "hElasticWEL_CHIPS_HP",
+  "stopping"
+ ],
+ "QGS_BIC": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "hElasticWEL_CHIPS_XS",
+  "hInelastic QGS_BIC",
+  "ionInelasticFTFP_BIC",
+  "neutronTrackingCut",
+  "stopping"
+ ],
+ "Shielding": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "IonQMD",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic Shielding",
+  "stopping"
+ ],
+ "ShieldingLIQMD": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "LightIonQMD",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic Shielding",
+  "stopping"
+ ],
+ "ShieldingM": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "IonQMD",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic Shielding",
+  "stopping"
+ ],
+ "ShieldingM_HP": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "IonQMD",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic Shielding",
+  "stopping"
+ ],
+ "Shielding_HP": [
+  "Decay",
+  "G4EmStandard",
+  "G4GammaLeptoNuclearPhys",
+  "G4RadioactiveDecay",
+  "IonElasticPhysics",
+  "IonQMD",
+  "hElasticWEL_CHIPS_HP",
+  "hInelastic Shielding",
+  "stopping"
+ ]
+}

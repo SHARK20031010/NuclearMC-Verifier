@@ -1,0 +1,154 @@
+{
+  "description": "Standard nuclear decay and radiation characteristics database (derived from ENSDF/NuDat 3.0)",
+  "version": "1.0.0",
+  "nuclides": {
+    "Co-60": {
+      "element": "Co",
+      "A": 60,
+      "Z": 27,
+      "half_life_s": 166347360.0,
+      "half_life_human": "5.2714 y",
+      "decay_mode": "beta-",
+      "gamma_lines": [
+        {"energy_keV": 1173.228, "intensity": 0.9985, "tolerance": 0.05, "note": "Primary cascade gamma 1"},
+        {"energy_keV": 1332.492, "intensity": 0.9998, "tolerance": 0.05, "note": "Primary cascade gamma 2"}
+      ],
+      "beta_endpoints_keV": [317.88]
+    },
+    "Cs-137": {
+      "element": "Cs",
+      "A": 137,
+      "Z": 55,
+      "half_life_s": 949248000.0,
+      "half_life_human": "30.08 y",
+      "decay_mode": "beta-",
+      "gamma_lines": [
+        {"energy_keV": 661.657, "intensity": 0.8499, "tolerance": 0.05, "note": "Isomeric transition via Ba-137m (branching ~85%)"}
+      ],
+      "beta_endpoints_keV": [514.0, 1175.6]
+    },
+    "Na-24": {
+      "element": "Na",
+      "A": 24,
+      "Z": 11,
+      "half_life_s": 53820.0,
+      "half_life_human": "14.957 h",
+      "decay_mode": "beta-",
+      "gamma_lines": [
+        {"energy_keV": 1368.626, "intensity": 0.9999, "tolerance": 0.05, "note": "Primary gamma 1"},
+        {"energy_keV": 2754.007, "intensity": 0.9985, "tolerance": 0.05, "note": "Primary cascade gamma 2"}
+      ],
+      "beta_endpoints_keV": [1392.8]
+    },
+    "Mo-99": {
+      "element": "Mo",
+      "A": 99,
+      "Z": 42,
+      "half_life_s": 237456.0,
+      "half_life_human": "65.96 h",
+      "decay_mode": "beta-",
+      "daughter_branching": {
+        "Tc-99m": {"branching_ratio": 0.875, "tolerance": 0.04, "note": "Decay to isomeric state Tc-99m"},
+        "Tc-99": {"branching_ratio": 0.125, "tolerance": 0.04, "note": "Decay directly to ground state"}
+      },
+      "gamma_lines": [
+        {"energy_keV": 140.511, "intensity": 0.89, "tolerance": 0.05, "note": "Tc-99m IT line in equilibrium"},
+        {"energy_keV": 739.5, "intensity": 0.121, "tolerance": 0.03}
+      ]
+    },
+    "Tc-99m": {
+      "element": "Tc",
+      "A": 99,
+      "Z": 43,
+      "half_life_s": 21624.0,
+      "half_life_human": "6.007 h",
+      "decay_mode": "IT",
+      "gamma_lines": [
+        {"energy_keV": 140.511, "intensity": 0.890, "tolerance": 0.05, "note": "Principal isomeric diagnostic gamma"}
+      ]
+    },
+    "Ir-192": {
+      "element": "Ir",
+      "A": 192,
+      "Z": 77,
+      "half_life_s": 6378048.0,
+      "half_life_human": "73.827 d",
+      "decay_mode": "beta- / EC",
+      "gamma_lines": [
+        {"energy_keV": 295.956, "intensity": 0.287, "tolerance": 0.04},
+        {"energy_keV": 308.455, "intensity": 0.297, "tolerance": 0.04},
+        {"energy_keV": 316.506, "intensity": 0.827, "tolerance": 0.05, "note": "Most prominent line"},
+        {"energy_keV": 468.069, "intensity": 0.478, "tolerance": 0.05},
+        {"energy_keV": 604.411, "intensity": 0.082, "tolerance": 0.02, "note": "High-energy line (8.2%)"}
+      ]
+    },
+    "I-131": {
+      "element": "I",
+      "A": 131,
+      "Z": 53,
+      "half_life_s": 693360.0,
+      "half_life_human": "8.025 d",
+      "decay_mode": "beta-",
+      "gamma_lines": [
+        {"energy_keV": 364.489, "intensity": 0.815, "tolerance": 0.05, "note": "Principal medical therapy line"}
+      ],
+      "beta_endpoints_keV": [606.3]
+    },
+    "Y-90": {
+      "element": "Y",
+      "A": 90,
+      "Z": 39,
+      "half_life_s": 230544.0,
+      "half_life_human": "64.04 h",
+      "decay_mode": "beta-",
+      "gamma_lines": [],
+      "beta_endpoints_keV": [2280.1],
+      "note": "Pure beta emitter"
+    },
+    "Cu-62": {
+      "element": "Cu",
+      "A": 62,
+      "Z": 29,
+      "half_life_s": 584.4,
+      "half_life_human": "9.74 m",
+      "decay_mode": "beta+ / EC",
+      "gamma_lines": [
+        {"energy_keV": 511.0, "intensity": 1.956, "tolerance": 0.05, "note": "Annihilation photons (2 per positron)"}
+      ]
+    },
+    "Br-87": {
+      "element": "Br",
+      "A": 87,
+      "Z": 35,
+      "half_life_s": 55.6,
+      "half_life_human": "55.6 s",
+      "decay_mode": "beta- / delayed-n",
+      "delayed_neutron_probability": 0.026,
+      "note": "Standard fission precursor for delayed neutrons"
+    },
+    "Na-22": {
+      "element": "Na",
+      "A": 22,
+      "Z": 11,
+      "half_life_s": 82140480.0,
+      "half_life_human": "2.603 y",
+      "decay_mode": "beta+ / EC",
+      "gamma_lines": [
+        {"energy_keV": 511.0, "intensity": 1.808, "tolerance": 0.05, "note": "Positron annihilation line"},
+        {"energy_keV": 1274.537, "intensity": 0.9994, "tolerance": 0.05, "note": "De-excitation prompt gamma"}
+      ]
+    },
+    "Am-241": {
+      "element": "Am",
+      "A": 241,
+      "Z": 95,
+      "half_life_s": 13640256000.0,
+      "half_life_human": "432.6 y",
+      "decay_mode": "alpha",
+      "gamma_lines": [
+        {"energy_keV": 59.54, "intensity": 0.359, "tolerance": 0.04, "note": "Characteristic low energy gamma line"}
+      ],
+      "alpha_energies_keV": [5485.6, 5442.8]
+    }
+  }
+}
