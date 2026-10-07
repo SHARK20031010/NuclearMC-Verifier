@@ -133,18 +133,18 @@ invariants:
 
 ---
 
-## 🔬 6 大物理守恒总线
+## 🔬 6 大物理守恒总线与逻辑传导链
 
-核验器底层由 6 个正交的物理核验核心 (`guardrail/engine/cores/`) 协同驱动：
+蒙特卡罗输运程序的本质是将上游物理意图、微观相互作用规律与代码数据流映射为一条有向无环计算图（DAG）。NuclearMC-Verifier 底层由 6 个正交的物理核验核心 (`guardrail/engine/cores/`) 协同驱动，严格按物理因果律与计算拓扑序进行逐环校验：
 
-| 守恒防护总线 | 核心源码 | 拦截的典型物理漏洞 |
+| 守恒防护总线 | 核心源码 | 对应的物理与代码逻辑传导链 |
 | :--- | :--- | :--- |
-| ⏱️ **因果与时钟总线** | `causality_core.py` | 飞行时间 (TOF)/符合测量误用局域时钟 `GetLocalTime()`；脉冲束流剂量率错误除以宏观周期；流动水体活化缺失回路停留时间。 |
-| 🌐 **相空间与测度总线** | `measure_core.py` | 4π 各向同性点源退化为垂直平行束；圆盘面源极坐标抽样未开平方 ($r=R\sqrt{\xi}$)；高斯展宽混淆 FWHM 与 $\sigma$；宇宙线源天顶角测度退化。 |
-| ⚖️ **权重流与方差总线** | `variance_core.py` | 几何重要性分裂 (Splitting) 或权重窗 (Weight Window) 计分漏乘粒子权重 `GetWeight()`（导致通量暴增数百万倍）；极厚深穿透屏蔽层漏设减方差机制。 |
-| 🔄 **步进生命周期总线** | `lifecycle_core.py` | 次级粒子产生顶点未过滤首步 (`GetCurrentStepNumber()==1`)；误用 `GetProcessDefinedStep` 代替 `GetCreatorProcess` 追溯父过程；探测器死层能量混入探测信号；跨事件容器未及时清空。 |
-| ⚛️ **核数据与材料总线** | `nuclear_core.py` | 挂载 ENSDF/NuDat 官方衰变数据库；同位素衰变分支比硬编码错误；Bateman 衰变链退化为单指数模型；热中子缺失高精度 $S(\alpha,\beta)$ 截面库；闪烁体漏设 Birks 猝灭。 |
-| 🎯 **上游输入意图总线** | `intent_core.py` | 吸收剂量计算直接除以几何体积（漏乘介质密度 $\rho$）；混淆 Gy 与 Sv、Bq 与 Ci；缺失物理归一化分母（每源粒子 vs 绝对源强）。 |
+| 🎯 **上游输入意图总线** | `intent_core.py` | **需求目标 $\rightarrow$ 观测量种类 $\rightarrow$ 几何实体 $\rightarrow$ 量纲单位 $\rightarrow$ 归一基准 (DAG 根节点)**<br>• 消除上游自然语言隐式歧义，确保目标物理量（剂量/注量/活度）、几何空间作用域、靶区介质质量（$V \times \rho$）与归一化分母（每源粒子 vs 绝对源强）全链路闭环，防止“下游算得完全正确、但目标算错”。 |
+| 🌐 **相空间与测度总线** | `measure_core.py` | **粒子源定义 $\rightarrow$ 能谱流形 $\rightarrow$ 空间分布 $\rightarrow$ 立体角微元测度 ($d\Omega = \sin\theta d\theta d\phi$)**<br>• 保证发射相空间在微分流形上保测度映射：连续能谱非负截断、圆盘面源面积极坐标雅可比变换 ($r = R\sqrt{\xi}$)、4π 全立体角各向同性严格球面度抽样，严禁退化为一维笛卡尔直抽或固定单向束。 |
+| ⚛️ **核数据与截面总线** | `nuclear_core.py` | **材料介质核素 $\rightarrow$ 适用能区模型覆盖 $\rightarrow$ 评价核截面库 $\rightarrow$ 衰变动力学级联**<br>• 微观相互作用概率由截面与物性唯一决定：热中子高精度 $S(\alpha,\beta)$ 截面强制绑定、物理列表过程模型能量区间无缝拼接、挂载 ENSDF/NuDat 官方衰变数据库与 Bateman 级联动力学、闪烁体 Birks 猝灭修正。 |
+| ⏱️ **因果与时钟总线** | `causality_core.py` | **宏观实验时钟 $\rightarrow$ 全局实验室时间 $\rightarrow$ 粒子局域寿命 $\rightarrow$ 延迟符合时序窗**<br>• 严格维护输运过程的相对论因果律：全局绝对时钟 (`GetGlobalTime`) 与局域寿命 (`GetLocalTime`) 显式隔离、飞行时间 (TOF) 保持单调递增因果链、双探头符合测量窗时序判定、脉冲束流与回路流体停留时间标定。 |
+| 🔄 **步进生命周期总线** | `lifecycle_core.py` | **径迹诞生 $\rightarrow$ 微步推进 $\rightarrow$ 界面穿越判定 $\rightarrow$ 敏感区信号解耦 $\rightarrow$ 容器生命周期重置**<br>• 跟踪 Monte Carlo 步进微态机转换：次级粒子产生严格首步过滤 (`GetCurrentStepNumber() == 1`)、过程溯源优先使用 `GetCreatorProcess`、跨界面依据 `PostStepPoint` 状态判定、死层能量隔离、Event 级累加容器生命周期隔离。 |
+| ⚖️ **权重流与方差总线** | `variance_core.py` | **真实输运测度 $\rightarrow$ 重要性分裂/轮盘赌偏置 $\rightarrow$ 统计权重动态补偿 $\rightarrow$ 无偏估计**<br>• 坚守“公平游戏（Fair-Game）”无偏输运测度：深穿透几何重要性分裂（Splitting）或权重窗（Weight Window）后，每个分裂粒子的统计权重 $w$ 动态缩减，计分器累加必须严格乘入权重流 $\sum (x_i \cdot w_i)$，严禁权重流断链。 |
 
 ---
 
