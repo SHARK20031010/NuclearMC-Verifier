@@ -4,18 +4,20 @@
 
 ### High-Precision Physics Guardrail & Formal Verifier for LLM-Generated Monte Carlo Transport Codes
 
-**大语言模型编写蒙特卡罗物理仿真代码（Geant4 / OpenMC）的静态守恒核验器与防幻觉护栏**
+**大语言模型编写蒙特卡罗物理仿真代码的确定性守恒核验器与防幻觉护栏**  
+*(专精 Geant4 C++ 实测闭环 · 底层守恒总线支持多引擎扩展)*
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
-  <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+-2ea44f.svg" alt="Geant4"></a>
+  <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
+  <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
   <a href="benchmark_tasks_reference/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
   <img src="https://img.shields.io/badge/Latency-%3C_10ms-brightgreen.svg" alt="Latency">
   <img src="https://img.shields.io/badge/Harness-Antigravity_%7C_DSH_%7C_Claude_%7C_OpenCode_%7C_MCP-9cf.svg" alt="Harness">
 </p>
 
-[English Overview](#-english-overview) · [痛点与演示](#-为什么需要它) · [核心特性](#-核心特性) · [快速上手](#-快速上手) · [CLI 总控工具](#-cli-总控工具) · [6 大物理守恒总线](#-6-大物理守恒总线) · [智能体集成指南](#-智能体生态集成) · [190 题基准库](#-190-题评测基准库) · [开源协议](#-开源许可与引用)
+[English Overview](#-english-overview) · [痛点与演示](#-为什么需要它) · [核心特性](#-核心特性) · [快速上手](#-快速上手) · [CLI 总控工具](#-cli-总控工具) · [6 大物理守恒总线](#-6-大物理守恒总线) · [引擎支持与路线图](#-引擎支持与路线图-engine-support--roadmap) · [智能体集成指南](#-智能体生态集成) · [190 题基准库](#-190-题评测基准库) · [开源协议](#-开源许可与引用)
 
 </div>
 
@@ -23,7 +25,7 @@
 
 ## 💡 为什么需要它？
 
-大语言模型（DeepSeek、GPT-4、Claude 等）编写通用软件时得心应手，但在**粒子与辐射输运数值模拟（Geant4 / OpenMC）**这种高维连续相空间物理计算中，极易产生极其隐蔽的**“静默物理错误”（Silent Physical Failures）**：
+大语言模型（DeepSeek、GPT-4、Claude 等）编写通用软件时得心应手，但在**粒子与辐射输运数值模拟（如 Geant4、OpenMC、MCNP 等）**这种高维连续相空间物理计算中，极易产生极其隐蔽的**“静默物理错误”（Silent Physical Failures）**：
 
 > **代码 0 警告编译通过，事件循环退出码为 0，但模拟输出的吸收剂量、粒子通量或核素产额却发生 $10^2 \sim 10^7$ 倍的灾难性物理畸变！**
 
@@ -148,6 +150,23 @@ invariants:
 
 ---
 
+## 🧭 引擎支持与路线图 (Engine Support & Roadmap)
+
+蒙特卡罗辐射输运求解包含**“底层物理守恒法则”**与**“上层仿真框架代码表达”**两个正交维度。NuclearMC-Verifier 在设计之初即确立了**“底层物理守恒总线通用化 + 前端代码解析适配层模块化”**的解耦架构：
+
+| 仿真框架 (Engine) | 前端代码形态 (Language/API) | 当前实装状态 (Status) | 实测验证基准 (Benchmark Validation) |
+| :--- | :--- | :--- | :--- |
+| **Geant4** | **C++** (面向对象钩子、步进微态机、离散指针) | 🟢 **完整实装 (v1.0)** | **190 题全量覆盖** (Tier 1–3 + Wild 社区真实漏洞 100% 闭环) |
+| **OpenMC** | **Python API** (声明式材料、源项、Tally 过滤器) | 🟡 **路线图中 (Roadmap)** | 物理总线规范完全就绪，Python AST 槽位提取器开发中 |
+| **MCNP / FLUKA** | **卡片格式 (Cards)** (SDEF 源卡、F4/F8 计数、FM 乘子) | ⚪ **概念验证 (Planned)** | 输入流/正则卡片语法解析器规划中 |
+
+> [!NOTE]
+> **为什么当前版本深度专精于 Geant4？**  
+> 1. **代码生成隐患最大**：Geant4 (C++) 的生成难度极高，生命周期钩子复杂（跨事件容器未重置、步进微态机状态错位、微步长边界震荡等），极易诱发模型产生难以察觉的“静默物理漂移”。我们在 v1.0 中集中全力打磨 Geant4 的 190 题基准库，确保达到 100% 拦截闭环。  
+> 2. **通用性一脉相承**：环 0 需求契约（`intent_core.py`）、评价衰变数据（`nuclear_core.py`）以及五动作（Define $\rightarrow$ Sample $\rightarrow$ Fetch $\rightarrow$ Accumulate $\rightarrow$ Convert）完全引擎无关。OpenMC 使用高度结构化的 Python API（如 `openmc.Source`、`openmc.Tally`），其 AST 槽位分析在技术实现上比 C++ 更加确定，后续将作为第二后端接入相同的 6 大守恒总线。
+
+---
+
 ## 🤖 智能体生态集成
 
 NuclearMC-Verifier 原生支持多主流 Coding Agent，能够在模型生成代码的第一时间完成自动化拦截：
@@ -255,7 +274,7 @@ NuclearMC-Verifier/
 
 ## 🌐 English Overview
 
-**NuclearMC-Verifier** is a deterministic, AST-based static analysis engine and physical guardrail designed to eliminate **silent physical failures** in LLM-generated Monte Carlo particle transport simulation code (e.g., Geant4, OpenMC).
+**NuclearMC-Verifier** is a deterministic, AST-based static analysis engine and physical guardrail designed to eliminate **silent physical failures** in LLM-generated Monte Carlo particle transport simulation code (specialized for Geant4 C++ with a multi-engine architectural roadmap including OpenMC and MCNP).
 
 - **The Problem**: Large language models easily generate syntactically clean C++ code that compiles with zero warnings and runs with exit code 0, yet yields catastrophic numerical deviations (factors of $10^2 \sim 10^7$) due to missing cross-section libraries, improper angular phase-space sampling, unweighted variance reduction tracks, or dimensional errors.
 - **The Solution**: NuclearMC-Verifier uses deterministic AST parsing (<10ms per file) to enforce 6 orthogonal conservation buses (causality, phase-space measure, fair-game weight flux, stepping lifecycle, nuclear decay chains, and specification intent) before compilation or execution.

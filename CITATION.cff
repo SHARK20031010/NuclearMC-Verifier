@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, benchmark dataset, or formal verifier framework, please cite it as below."
 title: "针对大语言模型生成粒子输运蒙卡程序的形式化核验器 (Formal Verifier for Large Language Model-Generated Monte Carlo Particle Transport Codes)"
-abstract: "A formal verification and validation (V&V) system and a 190-task hierarchical benchmark for Large Language Model code generation in Monte Carlo particle transport simulations (Geant4/OpenMC)."
+abstract: "A formal verification and validation (V&V) system and a 190-task hierarchical benchmark for Large Language Model code generation in Monte Carlo particle transport simulations (Specialized for Geant4 C++ with multi-engine architectural roadmap)."
 version: 1.0.0
 date-released: 2026-10-07
 license: Apache-2.0

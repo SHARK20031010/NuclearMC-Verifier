@@ -25,4 +25,4 @@ invariants:
   phase_space_measure: true            # 相空间测度与立体角对称性不变式
   fair_game_weight: true               # 输运统计无偏性与减方差权重不变式
   dimensional_linearity: true          # 量纲链与响应标度线性不变式
-  framework_api_contracts: true        # Geant4/OpenMC 步进生命周期与框架语义契约
+  framework_api_contracts: true        # 框架步进生命周期与 API 契约 (当前落地 Geant4，规划 OpenMC)

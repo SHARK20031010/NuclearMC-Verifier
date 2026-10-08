@@ -8,7 +8,7 @@
 - `scripts/`：运维总控与统一命令行工具（`mc-verifier`）。
 
 ## 2. 领域物理规约 (Domain Physics Specification)
-本项目涉及蒙特卡罗辐射输运（Geant4 / OpenMC）代码生成时，受严格的形式化物理守恒不变式约束。  
+本项目涉及蒙特卡罗辐射输运（专精 Geant4 C++ 实测，设计规约涵盖 OpenMC/MCNP）代码生成时，受严格的形式化物理守恒不变式约束。  
 - 详细物理守恒不变式与输入规约契约请查阅领域白皮书：[PHYSICS_SPEC.md](PHYSICS_SPEC.md)。
 - 该规约已由插件 `mc-formal-verifier` 自包含提供，在启用插件时自动由 Harness 加载，无需污染通用全局规则。
 

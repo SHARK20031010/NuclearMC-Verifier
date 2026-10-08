@@ -7,7 +7,7 @@
 
 ## 一、前置规约契约机制 (Pre-condition Specification Contract)
 
-在编写或重构任何蒙特卡罗粒子输运仿真程序（Geant4 / OpenMC）之前，**必须在代码注释或设计说明中首先对齐以下核心规约参数**：
+在编写或重构任何蒙特卡罗粒子输运仿真程序（当前落地 Geant4 C++，设计规约涵盖 OpenMC / MCNP）之前，**必须在代码注释或设计说明中首先对齐以下核心规约参数**：
 
 1. **观测量种类 (Observable)**：明确为粒子注量（Fluence）、吸收剂量（Absorbed Dose）、比活度（Specific Activity）、能量沉积谱还是探测效率；
 2. **物理作用域 (Spatial Scope)**：明确计数区域的几何实体名称与体积/表面积测度；
