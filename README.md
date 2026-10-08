@@ -8,6 +8,7 @@
 *(专精 Geant4 C++ 实测闭环 · 底层守恒总线支持多引擎扩展)*
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
@@ -293,7 +294,8 @@ NuclearMC-Verifier/
   author       = {{NuclearMC-Verifier Contributors}},
   title        = {{NuclearMC-Verifier: High-Precision Physics Guardrail for LLM-Generated Monte Carlo Transport Codes}},
   year         = {2026},
-  publisher    = {GitHub},
-  url          = {https://github.com/SHARK20031010/NuclearMC-Verifier}
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.23231733},
+  url          = {https://doi.org/10.5281/zenodo.23231733}
 }
 ```
