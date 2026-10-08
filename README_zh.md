@@ -6,8 +6,7 @@
 
 **[English](README.md) | [中文版](README_zh.md)**
 
-**大语言模型编写蒙特卡罗物理仿真代码的确定性守恒核验器与防幻觉护栏**  
-*(专精 Geant4 C++ 实测闭环 · 底层守恒总线支持多引擎扩展)*
+**大语言模型编写蒙特卡罗物理仿真代码的确定性守恒核验器与防幻觉护栏**
 
 <p align="center">
   <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>

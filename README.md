@@ -6,8 +6,7 @@
 
 **[English](README.md) | [中文版](README_zh.md)**
 
-**Deterministic Static Conservation Guardrail & Verification Engine for LLM-Synthesized Monte Carlo Simulation Codes**  
-*(Specialized for Geant4 C++ Verification · Multi-Engine Conservation Architecture)*
+**Deterministic Static Conservation Guardrail & Verification Engine for LLM-Synthesized Monte Carlo Simulation Codes**
 
 <p align="center">
   <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
