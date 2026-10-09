@@ -1,0 +1,52 @@
+{
+  "graph_id": "pst_T1_4_boundary_lifecycle",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T1-4/code/code_ArmC.cc",
+  "target_observable": null,
+  "nodes": [
+    {
+      "node_id": "n_sample_dir_1",
+      "action": "Sample",
+      "domain": "PhaseSpace",
+      "quantity": "Direction",
+      "metric": "CustomDistribution",
+      "expected_invariant": "DirectionalBeam",
+      "code_evidence": "fGun->SetParticleMomentumDirection({0, 0, 1})",
+      "line_range": [
+        64,
+        64
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "Prim",
+        "method": "GeneratePrimaries",
+        "condition": null
+      },
+      "attributes": {
+        "is_point_source": false
+      }
+    },
+    {
+      "node_id": "n_boundary_2",
+      "action": "Fetch",
+      "domain": "Lifecycle",
+      "quantity": "BoundaryCrossing",
+      "metric": "PostStepPointBoundary",
+      "expected_invariant": "PostStepPointBoundaryRequired",
+      "code_evidence": "post->GetStepStatus() != fGeomBoundary",
+      "line_range": [
+        75,
+        75
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "Step",
+        "method": "UserSteppingAction",
+        "condition": "(post->GetStepStatus() != fGeomBoundary)"
+      },
+      "attributes": {}
+    }
+  ],
+  "edges": [],
+  "metadata": {},
+  "description": "T1-4: PostStepPoint boundary crossing check in mixed neutron-gamma shield"
+}

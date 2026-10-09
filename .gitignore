@@ -88,5 +88,6 @@ AI蒙卡程序物理正确率与防错体系_综合总案.md
 g4dump/
 verify/
 测量方案/
-benchmarks
+benchmarks/
+!benchmarks/eval_pst.py
 docs/

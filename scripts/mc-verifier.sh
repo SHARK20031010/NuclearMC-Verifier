@@ -135,6 +135,29 @@ cmd_check() {
     python3 "$CHECK_PY" --code "$target" "${@:2}"
 }
 
+cmd_check_pst() {
+    local target="$1"
+    if [ -z "$target" ]; then
+        echo "用法: ./scripts/mc-verifier.sh check-pst <代码路径.cc>"
+        exit 1
+    fi
+    python3 -c "
+import sys
+from guardrail.ir import PSTBuilder, PSTVerifier
+builder = PSTBuilder()
+verifier = PSTVerifier()
+graph = builder.build_from_file('$target')
+print(f'PST Graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges')
+report = verifier.verify(graph)
+print(report.summary())
+sys.exit(0 if report.passed else 1)
+"
+}
+
+cmd_eval_pst() {
+    python3 "${ROOT_DIR}/benchmarks/eval_pst.py" "$@"
+}
+
 cmd_install_all() {
     echo "正在向本地检测到的 5 大 Harness 注册与挂载形式化核验器..."
 
@@ -186,17 +209,25 @@ case "$1" in
     check)
         cmd_check "$2" "${@:3}"
         ;;
+    check-pst)
+        cmd_check_pst "$2" "${@:3}"
+        ;;
+    eval-pst)
+        cmd_eval_pst "${@:2}"
+        ;;
     install-all)
         cmd_install_all
         ;;
     *)
         echo "形式化核验器 (MC-FormalVerifier) 统一管理工具"
         echo "用法:"
-        echo "  $0 on           - 开启核验（所有 5 个 Harness 强制执行守恒量门禁）"
-        echo "  $0 off          - 关闭核验（所有 5 个 Harness 进入严格 0ms No-Op 直通）"
-        echo "  $0 status       - 查看当前启闭状态及 5 大 Harness 就绪情况"
-        echo "  $0 check <文件> - 手动执行单文件形式化核验"
-        echo "  $0 install-all  - 一键向本地全部 5 大 Harness 挂载技能与适配器"
+        echo "  $0 on               - 开启核验（所有 5 个 Harness 强制执行守恒量门禁）"
+        echo "  $0 off              - 关闭核验（所有 5 个 Harness 进入严格 0ms No-Op 直通）"
+        echo "  $0 status           - 查看当前启闭状态及 5 大 Harness 就绪情况"
+        echo "  $0 check <文件>     - 手动执行单文件形式化核验 (通用守恒引擎)"
+        echo "  $0 check-pst <文件> - 执行物理语义树 (PST) 中间表示提取与形式化核验"
+        echo "  $0 eval-pst         - 运行 PST 全套基准评测 (8 组任务 16 份源码准确率与延迟)"
+        echo "  $0 install-all      - 一键向本地全部 5 大 Harness 挂载技能与适配器"
         exit 1
         ;;
 esac

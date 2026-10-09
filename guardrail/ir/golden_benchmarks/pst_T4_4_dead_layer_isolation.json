@@ -1,0 +1,85 @@
+{
+  "graph_id": "pst_T4_4_dead_layer_isolation",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T4-4/code/code_ArmC.cc",
+  "target_observable": null,
+  "nodes": [
+    {
+      "node_id": "n_fetch_edep_1",
+      "action": "Fetch",
+      "domain": "PhaseSpace",
+      "quantity": "EnergyDeposit",
+      "metric": "TotalEnergyDeposit",
+      "expected_invariant": "ConservationOfEnergy",
+      "code_evidence": "step->GetTotalEnergyDeposit()",
+      "line_range": [
+        33,
+        33
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "SteppingAction",
+        "method": "UserSteppingAction",
+        "condition": null
+      },
+      "attributes": {}
+    },
+    {
+      "node_id": "n_sens_hit_2",
+      "action": "Accumulate",
+      "domain": "Lifecycle",
+      "quantity": "SensitiveRegionHit",
+      "metric": "ActiveRegionOnlyHit",
+      "expected_invariant": "DeadLayerIsolated",
+      "code_evidence": "if (g_eCry > 0.) g_any[g_cur]++;",
+      "line_range": [
+        48,
+        48
+      ],
+      "ast_node_type": "if_statement",
+      "scope_context": {
+        "class": "EventAction",
+        "method": "EndOfEventAction",
+        "condition": "(g_eCry > 0.)"
+      },
+      "attributes": {
+        "condition": "(g_eCry > 0.)",
+        "is_contaminated": false
+      }
+    },
+    {
+      "node_id": "n_sample_dir_3",
+      "action": "Sample",
+      "domain": "PhaseSpace",
+      "quantity": "Direction",
+      "metric": "FixedPencilBeam",
+      "expected_invariant": "DirectionalBeam",
+      "code_evidence": "fGun->SetParticleMomentumDirection(G4ThreeVector(0, 0, 1))",
+      "line_range": [
+        59,
+        59
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "PrimaryGeneratorAction",
+        "method": "PrimaryGeneratorAction",
+        "condition": null
+      },
+      "attributes": {
+        "is_point_source": false
+      }
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e_edep_1",
+      "source_id": "n_fetch_edep_1",
+      "target_id": "n_sens_hit_2",
+      "edge_type": "DataDependency",
+      "variable_name": null,
+      "physical_units": "MeV",
+      "attributes": {}
+    }
+  ],
+  "metadata": {},
+  "description": "T4-4: Isolation of dead layer non-active energy deposit in HPGe array"
+}

@@ -1,0 +1,34 @@
+{
+  "graph_id": "pst_T4_8_fano_charge_fluctuation",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T4-8/code/code_ArmC.cc",
+  "target_observable": null,
+  "nodes": [
+    {
+      "node_id": "n_fano_1",
+      "action": "Convert",
+      "domain": "Variance",
+      "quantity": "ChargeFluctuation",
+      "metric": "FanoSuppressedVariance",
+      "expected_invariant": "var_N == Fano * N",
+      "code_evidence": "var_N = Fano * N",
+      "line_range": [
+        42,
+        42
+      ],
+      "ast_node_type": "init_declarator",
+      "scope_context": {
+        "class": null,
+        "method": "main",
+        "condition": null
+      },
+      "attributes": {
+        "lhs": "var_N",
+        "rhs": "Fano * N",
+        "has_fano": true
+      }
+    }
+  ],
+  "edges": [],
+  "metadata": {},
+  "description": "T4-8: Semiconductor charge carrier generation variance with Fano factor (F=0.115)"
+}

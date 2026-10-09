@@ -1,0 +1,150 @@
+{
+  "graph_id": "pst_T2_5_pulse_dose_rate",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T2-5/code/code_ArmC.cc",
+  "target_observable": null,
+  "nodes": [
+    {
+      "node_id": "n_sample_dir_1",
+      "action": "Sample",
+      "domain": "PhaseSpace",
+      "quantity": "Direction",
+      "metric": "FixedPencilBeam",
+      "expected_invariant": "DirectionalBeam",
+      "code_evidence": "gun.SetParticleMomentumDirection(G4ThreeVector(0,0,1))",
+      "line_range": [
+        45,
+        45
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "Prim",
+        "method": "GeneratePrimaries",
+        "condition": null
+      },
+      "attributes": {
+        "is_point_source": false
+      }
+    },
+    {
+      "node_id": "n_accumulate_2",
+      "action": "Accumulate",
+      "domain": "PhaseSpace",
+      "quantity": "PulseHeight",
+      "metric": "ScoreTally",
+      "expected_invariant": null,
+      "code_evidence": "gEdep += s->GetTotalEnergyDeposit()",
+      "line_range": [
+        51,
+        51
+      ],
+      "ast_node_type": "assignment_expression",
+      "scope_context": {
+        "class": "Step",
+        "method": "UserSteppingAction",
+        "condition": null
+      },
+      "attributes": {
+        "lhs": "gEdep",
+        "rhs": "s->GetTotalEnergyDeposit()"
+      }
+    },
+    {
+      "node_id": "n_fetch_edep_3",
+      "action": "Fetch",
+      "domain": "PhaseSpace",
+      "quantity": "EnergyDeposit",
+      "metric": "TotalEnergyDeposit",
+      "expected_invariant": "ConservationOfEnergy",
+      "code_evidence": "s->GetTotalEnergyDeposit()",
+      "line_range": [
+        51,
+        51
+      ],
+      "ast_node_type": "call_expression",
+      "scope_context": {
+        "class": "Step",
+        "method": "UserSteppingAction",
+        "condition": null
+      },
+      "attributes": {}
+    },
+    {
+      "node_id": "n_pulse_dose_4",
+      "action": "Convert",
+      "domain": "Causality",
+      "quantity": "PulseDoseRate",
+      "metric": "MicroscopicPulseDenominator",
+      "expected_invariant": "DividedByPulseDuration (e.g. 5.0*us)",
+      "code_evidence": "dose_rate = (gEdep / joule) / (5.0 * us)",
+      "line_range": [
+        59,
+        59
+      ],
+      "ast_node_type": "init_declarator",
+      "scope_context": {
+        "class": null,
+        "method": "main",
+        "condition": null
+      },
+      "attributes": {
+        "lhs": "dose_rate",
+        "rhs": "(gEdep / joule) / (5.0 * us)",
+        "has_pulse_time": true
+      }
+    },
+    {
+      "node_id": "n_accumulate_5",
+      "action": "Accumulate",
+      "domain": "PhaseSpace",
+      "quantity": "TimeOfFlightTally",
+      "metric": "ScoreTally",
+      "expected_invariant": null,
+      "code_evidence": "dose_rate = (gEdep / joule) / (5.0 * us)",
+      "line_range": [
+        59,
+        59
+      ],
+      "ast_node_type": "init_declarator",
+      "scope_context": {
+        "class": null,
+        "method": "main",
+        "condition": null
+      },
+      "attributes": {
+        "lhs": "dose_rate",
+        "rhs": "(gEdep / joule) / (5.0 * us)"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e_edep_1",
+      "source_id": "n_fetch_edep_3",
+      "target_id": "n_accumulate_2",
+      "edge_type": "DataDependency",
+      "variable_name": null,
+      "physical_units": "MeV",
+      "attributes": {}
+    },
+    {
+      "edge_id": "e_edep_2",
+      "source_id": "n_fetch_edep_3",
+      "target_id": "n_accumulate_5",
+      "edge_type": "DataDependency",
+      "variable_name": null,
+      "physical_units": "MeV",
+      "attributes": {}
+    },
+    {
+      "edge_id": "e_norm_pulse_3",
+      "source_id": "n_fetch_edep_3",
+      "target_id": "n_pulse_dose_4",
+      "edge_type": "NormalizationDenominator",
+      "variable_name": null,
+      "physical_units": "Gy/s",
+      "attributes": {}
+    }
+  ],
+  "metadata": {},
+  "description": "T2-5: Microsecond pulse duration temporal normalization for FLASH electron beam"
+}
