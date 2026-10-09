@@ -1,0 +1,90 @@
+{
+  "task_id": "T4-6",
+  "category": "T4 探测器响应与能谱",
+  "observable": "中子飞行时间谱 (TOF)",
+  "physical_core": "CAUSALITY",
+  "description": "14 MeV 快中子沿 5 米真空管道飞行，到达探测器前端时测量绝对飞行时间 (TOF)，必须读取绝对实验室时钟 GetGlobalTime()，严禁误用粒子局部寿命时钟 GetLocalTime()",
+  "golden_pst": {
+    "graph_id": "pst_T4_6_armC_golden",
+    "source_file": "tier1_single_slot/T4-6/code/code_ArmC.cc",
+    "target_observable": "TimeOfFlight",
+    "nodes": [
+      {
+        "node_id": "n_fetch_global_time",
+        "action": "Fetch",
+        "domain": "Causality",
+        "quantity": "GlobalTime",
+        "metric": "AbsoluteLabClock",
+        "expected_invariant": "t_arrival == GetGlobalTime()",
+        "code_evidence": "s->GetPostStepPoint()->GetGlobalTime()",
+        "line_range": [56, 56],
+        "ast_node_type": "CallExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      },
+      {
+        "node_id": "n_acc_tof",
+        "action": "Accumulate",
+        "domain": "Causality",
+        "quantity": "TimeOfFlightTally",
+        "metric": "FlightTimeTimestamp",
+        "expected_invariant": "CausalTimestampLinked",
+        "code_evidence": "gTOF = s->GetPostStepPoint()->GetGlobalTime();",
+        "line_range": [56, 56],
+        "ast_node_type": "AssignExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e_time_flow",
+        "source_id": "n_fetch_global_time",
+        "target_id": "n_acc_tof",
+        "edge_type": "CausalTime",
+        "variable_name": "gTOF",
+        "physical_units": "ns"
+      }
+    ]
+  },
+  "defective_pst": {
+    "graph_id": "pst_T4_6_armA_defective",
+    "source_file": "tier1_single_slot/T4-6/code/code_ArmA.cc",
+    "target_observable": "TimeOfFlight",
+    "nodes": [
+      {
+        "node_id": "n_fetch_local_time",
+        "action": "Fetch",
+        "domain": "Causality",
+        "quantity": "LocalTrackTime",
+        "metric": "LocalTrackLifetime",
+        "expected_invariant": "FAILS: LocalTime resets across secondaries/boundaries, loses TOF lab baseline",
+        "code_evidence": "s->GetPostStepPoint()->GetLocalTime()",
+        "line_range": [56, 56],
+        "ast_node_type": "CallExpr"
+      },
+      {
+        "node_id": "n_acc_tof",
+        "action": "Accumulate",
+        "domain": "Causality",
+        "quantity": "TimeOfFlightTally",
+        "code_evidence": "gTOF = s->GetPostStepPoint()->GetLocalTime();",
+        "line_range": [56, 56],
+        "ast_node_type": "AssignExpr"
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e_corrupt_time_flow",
+        "source_id": "n_fetch_local_time",
+        "target_id": "n_acc_tof",
+        "edge_type": "CausalTime",
+        "variable_name": "gTOF"
+      }
+    ],
+    "expected_violation": {
+      "invariant": "CAUSAL_TIME_METRICS_INVARIANCE",
+      "defective_node_id": "n_fetch_local_time",
+      "metric_observed": "LocalTrackLifetime",
+      "metric_required": "AbsoluteLabClock"
+    }
+  }
+}

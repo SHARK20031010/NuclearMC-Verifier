@@ -1,0 +1,122 @@
+{
+  "task_id": "T1-6",
+  "category": "T1 屏蔽与深穿透",
+  "observable": "权重归一化出射中子通量",
+  "physical_core": "VARIANCE",
+  "description": "14 MeV 中子穿透 1 米铁屏蔽层，经历几何重要性分裂方差缩减，出射通量累加必须乘入粒子动态权重 GetWeight()",
+  "golden_pst": {
+    "graph_id": "pst_T1_6_armC_golden",
+    "source_file": "tier1_single_slot/T1-6/code/code_ArmC.cc",
+    "target_observable": "WeightedNeutronFluence",
+    "nodes": [
+      {
+        "node_id": "n_define_source",
+        "action": "Define",
+        "domain": "PhaseSpace",
+        "quantity": "PrimaryNeutron",
+        "metric": "Monoenergetic_14MeV",
+        "expected_invariant": "E0 = 14 * MeV",
+        "code_evidence": "gun.SetParticleEnergy(14 * MeV); gun.SetParticleDefinition(...\"neutron\");",
+        "line_range": [49, 50],
+        "ast_node_type": "CallExpr",
+        "scope_context": {"class": "Prim", "method": "GeneratePrimaries"}
+      },
+      {
+        "node_id": "n_boundary_gate",
+        "action": "Fetch",
+        "domain": "Lifecycle",
+        "quantity": "BoundaryCrossing",
+        "metric": "PostZ_Threshold_100cm",
+        "expected_invariant": "PostStepPoint >= 100cm && PreStepPoint < 100cm",
+        "code_evidence": "s->GetPostStepPoint()->GetPosition().z() >= 100.0*cm && s->GetPreStepPoint()->GetPosition().z() < 100.0*cm",
+        "line_range": [60, 60],
+        "ast_node_type": "BinaryOperator",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      },
+      {
+        "node_id": "n_fetch_weight",
+        "action": "Fetch",
+        "domain": "Variance",
+        "quantity": "TrackWeight",
+        "metric": "DynamicWeight",
+        "expected_invariant": "WeightPreserved",
+        "code_evidence": "s->GetTrack()->GetWeight()",
+        "line_range": [61, 61],
+        "ast_node_type": "CallExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      },
+      {
+        "node_id": "n_accumulate_tally",
+        "action": "Accumulate",
+        "domain": "Variance",
+        "quantity": "FluenceScore",
+        "metric": "UnbiasedSum",
+        "expected_invariant": "E[gFlux] == true_flux",
+        "code_evidence": "gFlux += s->GetTrack()->GetWeight();",
+        "line_range": [61, 61],
+        "ast_node_type": "AssignExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e_gate_to_fetch",
+        "source_id": "n_boundary_gate",
+        "target_id": "n_fetch_weight",
+        "edge_type": "BoundaryGate"
+      },
+      {
+        "edge_id": "e_weight_flow",
+        "source_id": "n_fetch_weight",
+        "target_id": "n_accumulate_tally",
+        "edge_type": "WeightFlow",
+        "variable_name": "weight"
+      }
+    ]
+  },
+  "defective_pst": {
+    "graph_id": "pst_T1_6_armA_defective",
+    "source_file": "tier1_single_slot/T1-6/code/code_ArmA.cc",
+    "target_observable": "WeightedNeutronFluence",
+    "nodes": [
+      {
+        "node_id": "n_define_source",
+        "action": "Define",
+        "domain": "PhaseSpace",
+        "quantity": "PrimaryNeutron",
+        "code_evidence": "gun.SetParticleEnergy(14 * MeV);",
+        "line_range": [50, 50]
+      },
+      {
+        "node_id": "n_boundary_gate",
+        "action": "Fetch",
+        "domain": "Lifecycle",
+        "quantity": "BoundaryCrossing",
+        "code_evidence": "s->GetPostStepPoint()->GetPosition().z() >= 100.0*cm",
+        "line_range": [59, 59]
+      },
+      {
+        "node_id": "n_accumulate_unit",
+        "action": "Accumulate",
+        "domain": "Variance",
+        "quantity": "FluenceScore",
+        "expected_invariant": "FAILS: Missing weight multiplication",
+        "code_evidence": "gFlux += 1.0;",
+        "line_range": [60, 60]
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e_gate_to_acc",
+        "source_id": "n_boundary_gate",
+        "target_id": "n_accumulate_unit",
+        "edge_type": "BoundaryGate"
+      }
+    ],
+    "expected_violation": {
+      "invariant": "FAIR_GAME_WEIGHT_INVARIANCE",
+      "missing_edge": "WeightFlow",
+      "missing_node_action": "Fetch(TrackWeight)"
+    }
+  }
+}

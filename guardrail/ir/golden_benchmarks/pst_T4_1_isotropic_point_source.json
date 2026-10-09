@@ -1,0 +1,81 @@
+{
+  "task_id": "T4-1",
+  "category": "T4 探测器响应与能谱",
+  "observable": "HPGe 全能峰探测效率",
+  "physical_core": "MEASURE",
+  "description": "Cs-137 662 keV 点源放置于 HPGe 探测器前，粒子发射动量方向必须按 4pi 立体角 dOmega = sin(theta) dtheta dphi 各向同性抽样，严禁退化为固定单向平行束 (0,0,1)",
+  "golden_pst": {
+    "graph_id": "pst_T4_1_armC_golden",
+    "source_file": "tier1_single_slot/T4-1/code/code_ArmC.cc",
+    "target_observable": "PhotopeakEfficiency",
+    "nodes": [
+      {
+        "node_id": "n_sample_dir",
+        "action": "Sample",
+        "domain": "PhaseSpace",
+        "quantity": "Direction",
+        "metric": "SolidAngle_4Pi",
+        "expected_invariant": "dOmega = sin(theta) dtheta dphi (Uniform Sphere)",
+        "code_evidence": "fGun->SetParticleMomentumDirection(G4RandomDirection());",
+        "line_range": [51, 51],
+        "ast_node_type": "CallExpr",
+        "scope_context": {"class": "Prim", "method": "Prim()"}
+      },
+      {
+        "node_id": "n_fetch_edep",
+        "action": "Fetch",
+        "domain": "PhaseSpace",
+        "quantity": "EnergyDeposit",
+        "metric": "TotalEnergyDeposit",
+        "code_evidence": "st->GetTotalEnergyDeposit()",
+        "line_range": [59, 59],
+        "ast_node_type": "CallExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      },
+      {
+        "node_id": "n_acc_edep",
+        "action": "Accumulate",
+        "domain": "PhaseSpace",
+        "quantity": "PulseHeight",
+        "code_evidence": "gEdep += st->GetTotalEnergyDeposit();",
+        "line_range": [59, 59],
+        "ast_node_type": "AssignExpr",
+        "scope_context": {"class": "Step", "method": "UserSteppingAction"}
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "e_edep_flow",
+        "source_id": "n_fetch_edep",
+        "target_id": "n_acc_edep",
+        "edge_type": "DataDependency",
+        "physical_units": "MeV"
+      }
+    ]
+  },
+  "defective_pst": {
+    "graph_id": "pst_T4_1_armA_defective",
+    "source_file": "tier1_single_slot/T4-1/code/code_ArmA.cc",
+    "target_observable": "PhotopeakEfficiency",
+    "nodes": [
+      {
+        "node_id": "n_sample_degenerate_dir",
+        "action": "Sample",
+        "domain": "PhaseSpace",
+        "quantity": "Direction",
+        "metric": "FixedPencilBeam",
+        "expected_invariant": "FAILS: Degenerate dir (0,0,1) instead of 4pi isotropic",
+        "code_evidence": "fGun->SetParticleMomentumDirection(G4ThreeVector(0, 0, 1));",
+        "line_range": [51, 51],
+        "ast_node_type": "CallExpr"
+      }
+    ],
+    "edges": [],
+    "expected_violation": {
+      "invariant": "PHASE_SPACE_ISOTROPY_INVARIANCE",
+      "defective_node_id": "n_sample_degenerate_dir",
+      "metric_observed": "FixedPencilBeam",
+      "metric_required": "SolidAngle_4Pi"
+    }
+  }
+}
