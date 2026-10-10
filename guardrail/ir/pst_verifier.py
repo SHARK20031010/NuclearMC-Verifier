@@ -5,11 +5,12 @@ guardrail/ir/pst_verifier.py —— 物理语义树守恒验证器 (PST Conserva
 
 在 PST (Physics Semantic Tree) 中间表示图上执行图论遍历与形式化守恒断言，
 将物理第一性原理映射为图拓扑结构、节点属性与守恒总线的确定性检验。
-全面覆盖人类手写代码审查与 LLM 蒙卡程序生成门禁。
+全面覆盖人类手写代码审查与 LLM 蒙卡程序生成门禁，输出包含 Unified Diff 补丁的标准诊断封包。
 """
 
 from __future__ import annotations
 
+import difflib
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
@@ -24,7 +25,7 @@ from guardrail.ir.pst_schema import (
 
 
 class PSTViolation(BaseModel):
-    """形式化物理违约结果"""
+    """形式化物理违约结果（统一诊断封包）"""
     rule_id: str = Field(description="规则唯一标识，如 PST-INV-001")
     domain: ConservationDomain = Field(description="违约所属守恒总线域")
     severity: str = Field(default="CRITICAL", description="严重等级: CRITICAL / HIGH / WARNING")
@@ -34,6 +35,8 @@ class PSTViolation(BaseModel):
     code_evidence: Optional[str] = Field(default=None, description="源码行证据")
     line_range: Optional[List[int]] = Field(default=None, description="源码行范围")
     remedy: str = Field(description="专家级规范修复建议")
+    proposed_replacement: Optional[str] = Field(default=None, description="建议的替换代码片段")
+    diff: Optional[str] = Field(default=None, description="标准 Unified Diff 补丁")
 
 
 class PSTVerificationReport(BaseModel):
@@ -56,7 +59,16 @@ class PSTVerificationReport(BaseModel):
                 lines.append(f"  • 代码证据: `{v.code_evidence}`")
             lines.append(f"  • 物理机理诊断: {v.description}")
             lines.append(f"  • 规范修复指南: {v.remedy}")
+            if v.diff:
+                lines.append(f"  • 推荐修复 Diff:\n{v.diff}")
         return "\n".join(lines)
+
+
+def _build_simple_diff(original: str, replacement: str) -> str:
+    """生成简洁的红绿对比 Diff"""
+    orig_lines = [f"- {l}" for l in original.strip().splitlines()]
+    repl_lines = [f"+ {l}" for l in replacement.strip().splitlines()]
+    return "\n".join(orig_lines + repl_lines)
 
 
 class PSTVerifier:
@@ -110,6 +122,7 @@ class PSTVerifier:
                 has_weight_flow = any(e.edge_type == PSTEdgeType.WEIGHT_FLOW for e in incoming_edges)
 
                 if not has_weight_flow:
+                    repl = "gFlux += s->GetTrack()->GetWeight();" if "s->" in acc.code_evidence else "gFlux += step->GetTrack()->GetWeight();"
                     violations.append(PSTViolation(
                         rule_id="PST-INV-VARIANCE-01",
                         domain=ConservationDomain.VARIANCE,
@@ -124,6 +137,8 @@ class PSTVerifier:
                         code_evidence=acc.code_evidence,
                         line_range=list(acc.line_range),
                         remedy="在累加计分时严格乘入动态粒子权重：gFlux += step->GetTrack()->GetWeight();",
+                        proposed_replacement=repl,
+                        diff=_build_simple_diff(acc.code_evidence, repl),
                     ))
 
     def _check_phase_space_measure(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -136,6 +151,8 @@ class PSTVerifier:
             if smp.quantity == "Direction":
                 is_point_source = smp.attributes.get("is_point_source", False)
                 if smp.metric == "FixedPencilBeam" and is_point_source:
+                    gun_var = "gun." if "gun." in smp.code_evidence else "fGun->"
+                    repl = f"{gun_var}SetParticleMomentumDirection(G4RandomDirection());"
                     violations.append(PSTViolation(
                         rule_id="PST-INV-MEASURE-01",
                         domain=ConservationDomain.PHASE_SPACE,
@@ -150,6 +167,8 @@ class PSTVerifier:
                         code_evidence=smp.code_evidence,
                         line_range=list(smp.line_range),
                         remedy="改用 4pi 各向同性立体角抽样：gun->SetParticleMomentumDirection(G4RandomDirection());",
+                        proposed_replacement=repl,
+                        diff=_build_simple_diff(smp.code_evidence, repl),
                     ))
 
     def _check_causal_timing(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -160,6 +179,7 @@ class PSTVerifier:
         fetch_nodes = graph.find_nodes_by_action(PhysicalAction.FETCH)
         for fn in fetch_nodes:
             if fn.quantity == "LocalTrackTime" or fn.metric == "LocalTrackLifetime":
+                repl = fn.code_evidence.replace("GetLocalTime()", "GetGlobalTime()")
                 violations.append(PSTViolation(
                     rule_id="PST-INV-CAUSALITY-01",
                     domain=ConservationDomain.CAUSALITY,
@@ -174,6 +194,8 @@ class PSTVerifier:
                     code_evidence=fn.code_evidence,
                     line_range=list(fn.line_range),
                     remedy="改用绝对实验室全局时钟：step->GetPostStepPoint()->GetGlobalTime();",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(fn.code_evidence, repl),
                 ))
 
     def _check_boundary_lifecycle(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -184,6 +206,7 @@ class PSTVerifier:
         fetch_nodes = graph.find_nodes_by_action(PhysicalAction.FETCH)
         for fn in fetch_nodes:
             if fn.quantity == "BoundaryCrossing" and fn.metric == "PreStepPointBoundary":
+                repl = fn.code_evidence.replace("pre->GetStepStatus()", "post->GetStepStatus()").replace("PreStepPoint", "PostStepPoint")
                 violations.append(PSTViolation(
                     rule_id="PST-INV-LIFECYCLE-01",
                     domain=ConservationDomain.LIFECYCLE,
@@ -198,6 +221,8 @@ class PSTVerifier:
                     code_evidence=fn.code_evidence,
                     line_range=list(fn.line_range),
                     remedy="将边界状态判定切换至后步点：if (step->GetPostStepPoint()->GetStepStatus() == fGeomBoundary)",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(fn.code_evidence, repl),
                 ))
 
     def _check_energy_resolution_broadening(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -208,6 +233,7 @@ class PSTVerifier:
         convert_nodes = graph.find_nodes_by_action(PhysicalAction.CONVERT)
         for cn in convert_nodes:
             if cn.quantity == "GaussianBroadening" and cn.metric == "FWHMEqualsSigma":
+                repl = "double sigma = fwhm / 2.35482;"
                 violations.append(PSTViolation(
                     rule_id="PST-INV-MEASURE-02",
                     domain=ConservationDomain.PHASE_SPACE,
@@ -222,6 +248,8 @@ class PSTVerifier:
                     code_evidence=cn.code_evidence,
                     line_range=list(cn.line_range),
                     remedy="严格将半高宽折算为标准差：double sigma = fwhm / 2.35482;",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(cn.code_evidence, repl),
                 ))
 
     def _check_fano_charge_fluctuation(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -232,6 +260,7 @@ class PSTVerifier:
         convert_nodes = graph.find_nodes_by_action(PhysicalAction.CONVERT)
         for cn in convert_nodes:
             if cn.quantity == "ChargeFluctuation" and cn.metric == "PoissonVarianceWithoutFano":
+                repl = "double Fano = 0.115;\n  double var_N = Fano * N;"
                 violations.append(PSTViolation(
                     rule_id="PST-INV-VARIANCE-02",
                     domain=ConservationDomain.VARIANCE,
@@ -246,6 +275,8 @@ class PSTVerifier:
                     code_evidence=cn.code_evidence,
                     line_range=list(cn.line_range),
                     remedy="在电荷涨落方差中乘入 Fano 因子：double var_N = Fano * N; // Si 中 Fano ≈ 0.115",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(cn.code_evidence, repl),
                 ))
 
     def _check_dead_layer_isolation(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -256,6 +287,7 @@ class PSTVerifier:
         accumulate_nodes = graph.find_nodes_by_action(PhysicalAction.ACCUMULATE)
         for an in accumulate_nodes:
             if an.quantity == "SensitiveRegionHit" and an.metric == "DeadLayerContaminatedHit":
+                repl = "if (g_eCry > 0.) g_any[g_cur]++;"
                 violations.append(PSTViolation(
                     rule_id="PST-INV-LIFECYCLE-02",
                     domain=ConservationDomain.LIFECYCLE,
@@ -270,6 +302,8 @@ class PSTVerifier:
                     code_evidence=an.code_evidence,
                     line_range=list(an.line_range),
                     remedy="将死层能量从有效信号判据中隔离：if (g_eCry > 0.) g_any[g_cur]++;",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(an.code_evidence, repl),
                 ))
 
     def _check_pulsed_dose_rate_timing(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
@@ -280,6 +314,7 @@ class PSTVerifier:
         convert_nodes = graph.find_nodes_by_action(PhysicalAction.CONVERT)
         for cn in convert_nodes:
             if cn.quantity == "PulseDoseRate" and cn.metric == "MacroscopicTimeDenominator":
+                repl = "double dose_rate = (gEdep / joule) / (5.0 * us);"
                 violations.append(PSTViolation(
                     rule_id="PST-INV-CAUSALITY-02",
                     domain=ConservationDomain.CAUSALITY,
@@ -294,4 +329,6 @@ class PSTVerifier:
                     code_evidence=cn.code_evidence,
                     line_range=list(cn.line_range),
                     remedy="使用微观脉冲宽度归一化：double dose_rate = (gEdep / joule) / (5.0 * us);",
+                    proposed_replacement=repl,
+                    diff=_build_simple_diff(cn.code_evidence, repl),
                 ))

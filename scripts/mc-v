@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# mc-v —— 极简物理语义树守恒核验与伴侣入口
+# ==============================================================================
+
+set -e
+
+TARGET_SCRIPT="${BASH_SOURCE[0]}"
+while [ -L "$TARGET_SCRIPT" ]; do
+    TARGET_DIR="$(cd "$(dirname "$TARGET_SCRIPT")" && pwd)"
+    TARGET_SCRIPT="$(readlink "$TARGET_SCRIPT")"
+    [[ $TARGET_SCRIPT != /* ]] && TARGET_SCRIPT="$TARGET_DIR/$TARGET_SCRIPT"
+done
+SCRIPT_DIR="$(cd "$(dirname "$TARGET_SCRIPT")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+export PYTHONPATH="${ROOT_DIR}:${PYTHONPATH}"
+
+exec python3 "${ROOT_DIR}/guardrail/companion.py" "$@"
