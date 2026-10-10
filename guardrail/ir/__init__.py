@@ -23,6 +23,15 @@ from .intent_extractor import (
     SourceSymmetry,
     TimingClock,
 )
+from .code_manifest import (
+    CodeManifestExtractor,
+    CodeParameterManifest,
+    SourceManifest,
+    GeometrySolid,
+    PhysicsManifest,
+    TallyManifest,
+    RunControlManifest,
+)
 
 __all__ = [
     "PhysicalAction",
@@ -44,4 +53,11 @@ __all__ = [
     "ObservableType",
     "SourceSymmetry",
     "TimingClock",
+    "CodeManifestExtractor",
+    "CodeParameterManifest",
+    "SourceManifest",
+    "GeometrySolid",
+    "PhysicsManifest",
+    "TallyManifest",
+    "RunControlManifest",
 ]

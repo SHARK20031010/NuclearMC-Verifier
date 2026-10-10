@@ -28,6 +28,8 @@ from guardrail.ir.pst_schema import ConservationDomain, PSTGraph
 from guardrail.ir.cmake_parser import CMakeParser, CMakeProjectInfo, CMakeTarget
 from guardrail.ir.pst_linker import PSTLinker
 from guardrail.ir.intent_extractor import IntentExtractor, PhysicsIntent
+from guardrail.ir.code_manifest import CodeManifestExtractor, CodeParameterManifest
+
 
 
 # ──────────────────────── ANSI 终端彩色定义 ────────────────────────
@@ -71,6 +73,7 @@ class DiagnosticEnvelope(BaseModel):
     source_files: List[str] = Field(default_factory=list)
     definitions: List[str] = Field(default_factory=list)
     cross_edges_count: int = 0
+    code_manifest: Optional[CodeParameterManifest] = None
 
 
 class MCCompanion:
@@ -82,6 +85,7 @@ class MCCompanion:
         self.cmake_parser = CMakeParser()
         self.linker = PSTLinker()
         self.intent_extractor = IntentExtractor()
+        self.manifest_extractor = CodeManifestExtractor()
 
     def extract_intent(self, code_text: str, user_spec: Optional[str] = None) -> Tuple[PhysicsIntent, SpecContract]:
         """通过 LLM 意图解析器抽取标准物理意图卡，并适配为 SpecContract"""
@@ -123,6 +127,9 @@ class MCCompanion:
             combined_corpus = "\n".join(all_texts)
             intent, contract = self.extract_intent(combined_corpus, user_spec)
 
+            # 提取代码实参清单与漂移检测
+            manifest = self.manifest_extractor.extract(str(p), intent=intent)
+
             # 调用 PSTLinker 缝合成全景全局图
             global_graph = self.linker.link_project(proj_info)
 
@@ -150,6 +157,7 @@ class MCCompanion:
                 source_files=proj_info.all_source_files,
                 definitions=proj_info.definitions,
                 cross_edges_count=cross_edges,
+                code_manifest=manifest,
             )
 
         # 单文件处理流程
@@ -160,10 +168,13 @@ class MCCompanion:
         # 1. LLM 结构化意图抽取
         intent, contract = self.extract_intent(code_text, user_spec)
 
-        # 2. PST 构建与图组装
+        # 2. 提取代码实参清单与漂移检测
+        manifest = self.manifest_extractor.extract(str(p), intent=intent)
+
+        # 3. PST 构建与图组装
         graph = self.builder.build(code_text, filename=str(p))
 
-        # 3. 守恒不变式形式化核验 (动态注入 PhysicsIntent)
+        # 4. 守恒不变式形式化核验 (动态注入 PhysicsIntent)
         report = self.verifier.verify(graph, intent=intent)
         t1 = time.perf_counter()
 
@@ -181,7 +192,9 @@ class MCCompanion:
             edges_count=len(graph.edges),
             is_project=False,
             source_files=[str(p)],
+            code_manifest=manifest,
         )
+
 
     def render_dashboard(self, env: DiagnosticEnvelope) -> str:
         """渲染彩色现代终端看板 (类似 Rust/Cargo 视觉风格)"""
@@ -216,6 +229,13 @@ class MCCompanion:
         lines.append(f"{BOLD}{CYAN}│{RESET}    • 时间测度: {YELLOW}{pi.timing_clock.value}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
         lines.append(f"{BOLD}{CYAN}│{RESET}    • 减方差:   {vr_str}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
         lines.append(f"{BOLD}{CYAN}│{RESET}    • 归一基准: {YELLOW}{pi.normalization_basis}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
+
+        if env.code_manifest and env.code_manifest.drift_warnings:
+            lines.append(f"{BOLD}{CYAN}├{border}┤{RESET}")
+            lines.append(f"{BOLD}{CYAN}│{RESET}  {BOLD}{RED}⚠️  参数漂移警报 (Intent vs Code Drift):{RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+            for dw in env.code_manifest.drift_warnings:
+                lines.append(f"{BOLD}{CYAN}│{RESET}    {RED}• {dw[:56]}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
+
         lines.append(f"{BOLD}{CYAN}├{border}┤{RESET}")
 
         # 2. 五大正交守恒总线状态指示灯
@@ -396,6 +416,20 @@ class MCCompanion:
             print(f"\n{DIM}已退出监视模式。{RESET}")
 
 
+    def show_manifest(self, filepath: str, fmt: str = "cli", user_spec: Optional[str] = None) -> str:
+        """提取并渲染仿真输入参数显式清单"""
+        intent = None
+        if user_spec:
+            intent = self.intent_extractor.extract("", user_spec)
+        manifest = self.manifest_extractor.extract(filepath, intent=intent)
+        if fmt == "json":
+            return manifest.to_json()
+        elif fmt == "markdown":
+            return manifest.to_markdown()
+        else:
+            return manifest.render_cli()
+
+
 def main():
     args = sys.argv[1:]
     companion = MCCompanion()
@@ -416,17 +450,42 @@ def main():
         else:
             print(f"{BOLD}MC-V 物理伴侣 (Monte Carlo Formal Verifier){RESET}")
             print("用法:")
-            print(f"  {CYAN}mc-v .                       体检当前 CMake 蒙卡工程{RESET}")
-            print(f"  {CYAN}mc-v <代码.cc / 目录>          快速体检 (自动从源码与注释提取物理意图){RESET}")
-            print(f"  {CYAN}mc-v <代码.cc / 目录> \"需求说明\"{RESET}  自然语言物理需求对齐体检")
-            print(f"  {CYAN}mc-v fix <代码.cc / 目录>{RESET}     一键应用推荐补丁并自动复核")
-            print(f"  {CYAN}mc-v watch <代码.cc / 目录>{RESET}   实时伴侣监视模式 (保存即刷红绿灯)")
-            print(f"  {CYAN}mc-v eval{RESET}                     运行 8 大基准任务自动化评测")
+            print(f"  {CYAN}mc-v .                                 体检当前 CMake 蒙卡工程{RESET}")
+            print(f"  {CYAN}mc-v <代码.cc / 目录>                    快速体检 (自动从源码与注释提取物理意图){RESET}")
+            print(f"  {CYAN}mc-v <代码.cc / 目录> \"需求说明\"{RESET}            自然语言物理需求对齐体检")
+            print(f"  {CYAN}mc-v manifest <代码.cc / 目录> [--json]   结构化提取仿真输入参数清单 (源项/几何/材料/物理/计分){RESET}")
+            print(f"  {CYAN}mc-v fix <代码.cc / 目录>{RESET}               一键应用推荐补丁并自动复核")
+            print(f"  {CYAN}mc-v watch <代码.cc / 目录>{RESET}             实时伴侣监视模式 (保存即刷红绿灯)")
+            print(f"  {CYAN}mc-v eval{RESET}                               运行 8 大基准任务自动化评测")
             sys.exit(1)
 
     cmd = args[0]
 
-    if cmd == "fix" and len(args) >= 2:
+    if cmd in ("manifest", "params"):
+        # 提取目标路径
+        target_path = "."
+        user_spec = None
+        fmt = "cli"
+
+        for a in args[1:]:
+            if a in ("--json", "-j"):
+                fmt = "json"
+            elif a in ("--markdown", "-m"):
+                fmt = "markdown"
+            elif not a.startswith("-"):
+                if target_path == ".":
+                    target_path = a
+                elif user_spec is None:
+                    user_spec = a
+
+        try:
+            print(companion.show_manifest(target_path, fmt=fmt, user_spec=user_spec))
+            sys.exit(0)
+        except Exception as e:
+            print(f"{RED}提取错误: {e}{RESET}", file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == "fix" and len(args) >= 2:
         ok = companion.fix(args[1])
         sys.exit(0 if ok else 1)
 
@@ -466,3 +525,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
