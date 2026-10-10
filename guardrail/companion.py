@@ -5,7 +5,7 @@ guardrail/companion.py —— MC-V 物理伴侣核心交互引擎 (Physics Compa
 
 支持：
 1. 零 Flag 极简即时体检 (`mc-v <文件>` 或 `mc-v <工程目录>` / `mc-v .`)
-2. 规约对齐体检 (`mc-v <目标> "需求说明"`)
+2. 自然语言规约对齐体检 (`mc-v <目标> "大白话需求说明"`) —— 由 LLM 自动拆解结构化槽位
 3. 一键物理修复 (`mc-v fix <目标>`) —— 支持单文件与多文件跨模块自动打补丁
 4. 实时伴侣监视模式 (`mc-v watch <目标>`) —— 监听所有源码修改，毫秒级刷新
 5. 8 大基准自动化评测 (`mc-v eval`)
@@ -27,6 +27,7 @@ from guardrail.ir.pst_verifier import PSTVerifier, PSTVerificationReport, PSTVio
 from guardrail.ir.pst_schema import ConservationDomain, PSTGraph
 from guardrail.ir.cmake_parser import CMakeParser, CMakeProjectInfo, CMakeTarget
 from guardrail.ir.pst_linker import PSTLinker
+from guardrail.ir.intent_extractor import IntentExtractor, PhysicsIntent
 
 
 # ──────────────────────── ANSI 终端彩色定义 ────────────────────────
@@ -58,6 +59,7 @@ class DiagnosticEnvelope(BaseModel):
     code_lines: int
     latency_ms: float
     spec_contract: SpecContract
+    physics_intent: PhysicsIntent
     passed: bool
     violations: List[PSTViolation] = Field(default_factory=list)
     nodes_count: int = 0
@@ -79,72 +81,19 @@ class MCCompanion:
         self.verifier = PSTVerifier()
         self.cmake_parser = CMakeParser()
         self.linker = PSTLinker()
+        self.intent_extractor = IntentExtractor()
 
-    def extract_spec(self, code_text: str, user_spec: Optional[str] = None) -> SpecContract:
-        """从用户输入或源码头部注释中提取物理规约契约"""
-        if user_spec and user_spec.strip():
-            desc = user_spec.strip()
-            source_info = "用户指定源项"
-            if re.search(r"Cs-?137|Co-?60|点源|point|gamma", desc, re.IGNORECASE):
-                source_info = "各向同性放射性点源 (4pi)"
-            elif re.search(r"14\s*MeV|neutron|中子|束流|beam", desc, re.IGNORECASE):
-                source_info = "高能中子/带电粒子定向束流"
-
-            return SpecContract(
-                observable=desc,
-                source=source_info,
-                temporal_metric="实验绝对全局时钟 (GlobalTime)" if "tof" in desc.lower() else "稳态物理输运",
-                normalization="每源粒子归一化 (Per Primary)",
-                inferred_from="命令行自然语言输入",
-            )
-
-        # 尝试从前 35 行代码注释推断
-        first_lines = "\n".join(code_text.splitlines()[:35])
-        
-        # 1. 探测效率与点源
-        if re.search(r"Cs-?137|HPGe|全能峰|探测效率|NaI", first_lines, re.IGNORECASE):
-            return SpecContract(
-                observable="探测器全能峰绝对效率 (Peak Efficiency)",
-                source="Cs-137 放射性点源 (4pi 球面度空间各向同性)",
-                temporal_metric="事件符合衰变时间窗",
-                normalization="发射总粒子数归一化 (Per Emitted Primary)",
-                inferred_from="源码头部注释自动提取",
-            )
-        # 2. 铁水深穿透与权重
-        elif re.search(r"深穿透|铁屏蔽|中子通量|方差缩减|weight|flux", first_lines, re.IGNORECASE):
-            return SpecContract(
-                observable="深穿透出射端中子通量 (Weighted Neutron Fluence)",
-                source="14 MeV 中子定向注入束流",
-                temporal_metric="稳态输运时间无关",
-                normalization="权重无偏统计归一化 (Sum of Weights / N)",
-                inferred_from="源码头部注释自动提取",
-            )
-        # 3. 脉冲剂量率
-        elif re.search(r"脉冲|dose|FLASH|electron|电子束", first_lines, re.IGNORECASE):
-            return SpecContract(
-                observable="瞬态单脉冲峰值吸收剂量率 (Pulse Dose Rate)",
-                source="高剂量率电子束单脉冲",
-                temporal_metric="瞬态微观脉冲持续时间 (如 5 us)",
-                normalization="靶区介质质量除法归一 (Gy = J/kg)",
-                inferred_from="源码头部注释自动提取",
-            )
-        # 4. 飞行时间谱 TOF
-        elif re.search(r"TOF|飞行时间|time.*flight", first_lines, re.IGNORECASE):
-            return SpecContract(
-                observable="快中子飞行时间谱 (Time of Flight Spectrum)",
-                source="散裂靶脉冲中子源",
-                temporal_metric="绝对实验室全局时钟 (GetGlobalTime)",
-                normalization="每脉冲注入中子数归一化",
-                inferred_from="源码头部注释自动提取",
-            )
-
-        return SpecContract(
-            observable="粒子输运微观沉积与出射统计",
-            source="各向同性/定向辐射源项",
-            temporal_metric="稳态输运时间无关",
-            normalization="每初级粒子 (Per Event)",
-            inferred_from="通用粒子输运物理缺省契约",
+    def extract_intent(self, code_text: str, user_spec: Optional[str] = None) -> Tuple[PhysicsIntent, SpecContract]:
+        """通过 LLM 意图解析器抽取标准物理意图卡，并适配为 SpecContract"""
+        intent = self.intent_extractor.extract(code_text, user_spec)
+        contract = SpecContract(
+            observable=intent.observable_desc,
+            source=intent.source_desc,
+            temporal_metric=intent.timing_clock.value,
+            normalization=intent.normalization_basis,
+            inferred_from=intent.extraction_source,
         )
+        return intent, contract
 
     def inspect(self, filepath: str, user_spec: Optional[str] = None) -> DiagnosticEnvelope:
         """对单文件或整套 CMake 蒙卡工程执行物理语义树分析并生成诊断封包"""
@@ -172,13 +121,13 @@ class MCCompanion:
                     total_lines += len(txt.splitlines())
 
             combined_corpus = "\n".join(all_texts)
-            contract = self.extract_spec(combined_corpus, user_spec)
+            intent, contract = self.extract_intent(combined_corpus, user_spec)
 
             # 调用 PSTLinker 缝合成全景全局图
             global_graph = self.linker.link_project(proj_info)
 
-            # 形式化守恒断言核验
-            report = self.verifier.verify(global_graph)
+            # 形式化守恒断言核验 (动态注入 PhysicsIntent)
+            report = self.verifier.verify(global_graph, intent=intent)
             t1 = time.perf_counter()
 
             latency_ms = (t1 - t0) * 1000.0
@@ -190,6 +139,7 @@ class MCCompanion:
                 code_lines=total_lines,
                 latency_ms=round(latency_ms, 2),
                 spec_contract=contract,
+                physics_intent=intent,
                 passed=report.passed,
                 violations=report.violations,
                 nodes_count=len(global_graph.nodes),
@@ -207,14 +157,14 @@ class MCCompanion:
         code_lines = len(code_text.splitlines())
 
         t0 = time.perf_counter()
-        # 1. 环 0 规约抽取
-        contract = self.extract_spec(code_text, user_spec)
+        # 1. LLM 结构化意图抽取
+        intent, contract = self.extract_intent(code_text, user_spec)
 
         # 2. PST 构建与图组装
         graph = self.builder.build(code_text, filename=str(p))
 
-        # 3. 守恒不变式形式化核验
-        report = self.verifier.verify(graph)
+        # 3. 守恒不变式形式化核验 (动态注入 PhysicsIntent)
+        report = self.verifier.verify(graph, intent=intent)
         t1 = time.perf_counter()
 
         latency_ms = (t1 - t0) * 1000.0
@@ -224,6 +174,7 @@ class MCCompanion:
             code_lines=code_lines,
             latency_ms=round(latency_ms, 2),
             spec_contract=contract,
+            physics_intent=intent,
             passed=report.passed,
             violations=report.violations,
             nodes_count=len(graph.nodes),
@@ -256,13 +207,15 @@ class MCCompanion:
 
         lines.append(f"{BOLD}{CYAN}├{border}┤{RESET}")
 
-        # 1. 规约意图回执
-        sc = env.spec_contract
-        lines.append(f"{BOLD}{CYAN}│{RESET}  {BOLD}📋 前置物理规约对齐契约 (环 0 Spec){RESET} {DIM}[{sc.inferred_from}]{RESET}".ljust(width + 13) + f"{BOLD}{CYAN}│{RESET}")
-        lines.append(f"{BOLD}{CYAN}│{RESET}    • 观测量:   {YELLOW}{sc.observable}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
-        lines.append(f"{BOLD}{CYAN}│{RESET}    • 辐射源:   {YELLOW}{sc.source}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
-        lines.append(f"{BOLD}{CYAN}│{RESET}    • 时间测度: {YELLOW}{sc.temporal_metric}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
-        lines.append(f"{BOLD}{CYAN}│{RESET}    • 归一基准: {YELLOW}{sc.normalization}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
+        # 1. 结构化物理意图回执 (Ring 0 Intent)
+        pi = env.physics_intent
+        vr_str = f"{YELLOW}开启 (粒子权重流强约束){RESET}" if pi.variance_reduction else f"{DIM}关闭 (单位权重输运){RESET}"
+        lines.append(f"{BOLD}{CYAN}│{RESET}  {BOLD}📋 结构化物理意图契约 (Ring 0 Intent){RESET} {DIM}[{pi.extraction_source}]{RESET}".ljust(width + 13) + f"{BOLD}{CYAN}│{RESET}")
+        lines.append(f"{BOLD}{CYAN}│{RESET}    • 观测量:   {YELLOW}{pi.observable_desc}{RESET} {DIM}[{pi.observable.value}]{RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+        lines.append(f"{BOLD}{CYAN}│{RESET}    • 辐射源:   {YELLOW}{pi.source_desc}{RESET} {DIM}[{pi.source_symmetry.value}]{RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+        lines.append(f"{BOLD}{CYAN}│{RESET}    • 时间测度: {YELLOW}{pi.timing_clock.value}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
+        lines.append(f"{BOLD}{CYAN}│{RESET}    • 减方差:   {vr_str}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+        lines.append(f"{BOLD}{CYAN}│{RESET}    • 归一基准: {YELLOW}{pi.normalization_basis}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
         lines.append(f"{BOLD}{CYAN}├{border}┤{RESET}")
 
         # 2. 五大正交守恒总线状态指示灯
@@ -465,7 +418,7 @@ def main():
             print("用法:")
             print(f"  {CYAN}mc-v .                       体检当前 CMake 蒙卡工程{RESET}")
             print(f"  {CYAN}mc-v <代码.cc / 目录>          快速体检 (自动从源码与注释提取物理意图){RESET}")
-            print(f"  {CYAN}mc-v <代码.cc / 目录> \"需求说明\"{RESET}  带指定需求体检")
+            print(f"  {CYAN}mc-v <代码.cc / 目录> \"需求说明\"{RESET}  自然语言物理需求对齐体检")
             print(f"  {CYAN}mc-v fix <代码.cc / 目录>{RESET}     一键应用推荐补丁并自动复核")
             print(f"  {CYAN}mc-v watch <代码.cc / 目录>{RESET}   实时伴侣监视模式 (保存即刷红绿灯)")
             print(f"  {CYAN}mc-v eval{RESET}                     运行 8 大基准任务自动化评测")

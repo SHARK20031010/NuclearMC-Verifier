@@ -16,6 +16,13 @@ from .pst_builder import PSTBuilder
 from .pst_verifier import PSTVerifier, PSTViolation, PSTVerificationReport
 from .cmake_parser import CMakeParser, CMakeProjectInfo, CMakeTarget
 from .pst_linker import PSTLinker
+from .intent_extractor import (
+    IntentExtractor,
+    PhysicsIntent,
+    ObservableType,
+    SourceSymmetry,
+    TimingClock,
+)
 
 __all__ = [
     "PhysicalAction",
@@ -32,4 +39,9 @@ __all__ = [
     "CMakeProjectInfo",
     "CMakeTarget",
     "PSTLinker",
+    "IntentExtractor",
+    "PhysicsIntent",
+    "ObservableType",
+    "SourceSymmetry",
+    "TimingClock",
 ]

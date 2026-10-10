@@ -23,6 +23,12 @@ from guardrail.ir.pst_schema import (
     PSTEdge,
     PSTGraph,
 )
+from guardrail.ir.intent_extractor import (
+    PhysicsIntent,
+    ObservableType,
+    SourceSymmetry,
+    TimingClock,
+)
 
 
 class PSTViolation(BaseModel):
@@ -76,17 +82,17 @@ def _build_simple_diff(original: str, replacement: str) -> str:
 class PSTVerifier:
     """物理语义树形式化断言引擎 (Layer 5)"""
 
-    def verify(self, graph: PSTGraph) -> PSTVerificationReport:
+    def verify(self, graph: PSTGraph, intent: Optional[PhysicsIntent] = None) -> PSTVerificationReport:
         violations: List[PSTViolation] = []
 
         # 1. 检验公平博弈统计权重守恒 (Fair-Game Weight Invariance · T1-6)
-        self._check_fair_game_weight(graph, violations)
+        self._check_fair_game_weight(graph, violations, intent)
 
         # 2. 检验相空间立体角测度守恒 (Phase-Space Measure Invariance · T4-1)
-        self._check_phase_space_measure(graph, violations)
+        self._check_phase_space_measure(graph, violations, intent)
 
         # 3. 检验因果与绝对实验时钟守恒 (Causal Time Invariance · T4-6)
-        self._check_causal_timing(graph, violations)
+        self._check_causal_timing(graph, violations, intent)
 
         # 4. 检验步进边界生命周期契约 (Boundary Step Lifecycle · T1-4)
         self._check_boundary_lifecycle(graph, violations)
@@ -101,7 +107,7 @@ class PSTVerifier:
         self._check_dead_layer_isolation(graph, violations)
 
         # 8. 检验高剂量率脉冲时钟微观归一化 (Pulse Dose Rate Temporal Normalization · T2-5)
-        self._check_pulsed_dose_rate_timing(graph, violations)
+        self._check_pulsed_dose_rate_timing(graph, violations, intent)
 
         # 自动推断违规源码所在文件 (针对多文件工程)
         for v in violations:
@@ -121,14 +127,15 @@ class PSTVerifier:
             violations=violations,
         )
 
-    def _check_fair_game_weight(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+    def _check_fair_game_weight(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
         """
-        断言 1: 凡涉及通量累加 (FluenceScore) 的计分节点，必须具有入度边 WeightFlow。
+        断言 1: 凡涉及通量累加 (FluenceScore) 或意图声明减方差的计分节点，必须具有入度边 WeightFlow。
         若缺失 WeightFlow 入度，意味着方差缩减操作下未乘入权重，导致通量被虚假放大。
         """
         accumulate_nodes = graph.find_nodes_by_action(PhysicalAction.ACCUMULATE)
+        requires_weight = (intent and intent.variance_reduction)
         for acc in accumulate_nodes:
-            if acc.quantity == "FluenceScore":
+            if acc.quantity == "FluenceScore" or (requires_weight and acc.quantity in ("FluenceScore", "PulseHeight", "SensitiveRegionHit")):
                 incoming_edges = graph.get_incoming_edges(acc.node_id)
                 has_weight_flow = any(e.edge_type == PSTEdgeType.WEIGHT_FLOW for e in incoming_edges)
 
@@ -140,8 +147,8 @@ class PSTVerifier:
                         severity="CRITICAL",
                         defect_name="方差缩减通量计分漏乘粒子统计权重 (Fair-Game Weight Lost)",
                         description=(
-                            "PST 图分析表明：计分累加节点 [FluenceScore] 缺少前置的 [WeightFlow] 入度边。"
-                            "在中子/光子深穿透几何中，粒子经历分裂或轮盘赌后带有动态权重，直接累加计数 (+1.0) "
+                            "PST 图分析表明：计分累加节点缺少前置的 [WeightFlow] 粒子统计权重入度边。"
+                            "物理意图已声明开启深穿透/减方差偏倚，粒子经历分裂或轮盘赌后带有动态权重，直接累加计数 "
                             "会导致宏观通量结果严重高估，破坏公平博弈输运无偏性不变式。"
                         ),
                         violating_node_id=acc.node_id,
@@ -152,15 +159,24 @@ class PSTVerifier:
                         diff=_build_simple_diff(acc.code_evidence, repl),
                     ))
 
-    def _check_phase_space_measure(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+    def _check_phase_space_measure(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
         """
         断言 2: 点辐射源动量抽样节点必须具备各向同性测度 SolidAngle_4Pi。
         若其测度为 FixedPencilBeam，说明点源退化为单向笔束，立体角几何测度丢失。
+        注意：若物理意图明确声明为定向束流 (DirectionalBeam)，则定轴笔束属于合法设定，不予报警。
         """
         sample_nodes = graph.find_nodes_by_action(PhysicalAction.SAMPLE)
         for smp in sample_nodes:
             if smp.quantity == "Direction":
-                is_point_source = smp.attributes.get("is_point_source", False)
+                # 判定是否要求各向同性立体角
+                if intent:
+                    if intent.source_symmetry == SourceSymmetry.DIRECTIONAL_BEAM:
+                        # 用户明确指定为定向束流/笔束，单向发射完全合法
+                        continue
+                    is_point_source = (intent.source_symmetry == SourceSymmetry.ISOTROPIC_4PI) or smp.attributes.get("is_point_source", False)
+                else:
+                    is_point_source = smp.attributes.get("is_point_source", False)
+
                 if smp.metric == "FixedPencilBeam" and is_point_source:
                     m_gun = re.search(r"(\w+(?:->|\.))\s*SetParticleMomentumDirection", smp.code_evidence)
                     gun_var = m_gun.group(1) if m_gun else ("gun." if "gun." in smp.code_evidence else "fGun->")
@@ -172,7 +188,7 @@ class PSTVerifier:
                         defect_name="点辐射源角分布退化为平行笔束 (Degenerate Pencil Beam)",
                         description=(
                             "PST 图分析表明：粒子发射动量抽样节点 [Direction] 的物理测度为 [FixedPencilBeam] (0,0,1)。"
-                            "在点放射源或各向同性探测实验中，动量发射必须在 4pi 球面度空间内按 dOmega = sin(theta) dtheta dphi 均匀分布。"
+                            "在点放射源或 4π 各向同性探测实验中，动量发射必须在空间内按 dOmega = sin(theta) dtheta dphi 均匀分布。"
                             "固定单向向量会导致探测器所张立体角被人为放大数十倍，峰效率超几何物理上限。"
                         ),
                         violating_node_id=smp.node_id,
@@ -183,14 +199,15 @@ class PSTVerifier:
                         diff=_build_simple_diff(smp.code_evidence, repl),
                     ))
 
-    def _check_causal_timing(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+    def _check_causal_timing(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
         """
         断言 3: 飞行时间 (TOF) 或事件到达时钟节点必须读取绝对全局时钟 AbsoluteLabClock。
         若读取了 LocalTrackLifetime (GetLocalTime)，粒子跨边界或产生次级时局域时钟清零，时序因果链断裂。
         """
         fetch_nodes = graph.find_nodes_by_action(PhysicalAction.FETCH)
+        is_tof = (intent and (intent.timing_clock == TimingClock.GLOBAL_LAB_CLOCK or intent.observable == ObservableType.TIME_OF_FLIGHT)) or any(n.quantity == "TimeOfFlightTally" for n in graph.nodes) or ("tof" in graph.source_file.lower())
         for fn in fetch_nodes:
-            if fn.quantity == "LocalTrackTime" or fn.metric == "LocalTrackLifetime":
+            if (fn.quantity == "LocalTrackTime" or fn.metric == "LocalTrackLifetime") and is_tof:
                 repl = fn.code_evidence.replace("GetLocalTime()", "GetGlobalTime()")
                 violations.append(PSTViolation(
                     rule_id="PST-INV-CAUSALITY-01",
@@ -200,7 +217,7 @@ class PSTVerifier:
                     description=(
                         "PST 图分析表明：实验时钟提取节点读取了粒子局域时钟 [LocalTrackLifetime] (GetLocalTime)。"
                         "在 Geant4 输运因果体系中，GetLocalTime() 仅记录粒子自当前径迹诞生起的局部寿命，粒子跨越边界或产生次级时极易被重置。"
-                        "测量粒子从源项到探测器的绝对飞行时间 (TOF) 必须采用绝对实验室全局时钟。"
+                        "测量粒子从源项到探测器的绝对飞行时间 (TOF) 必须采用绝对实验室全局时钟 (GetGlobalTime)。"
                     ),
                     violating_node_id=fn.node_id,
                     code_evidence=fn.code_evidence,
@@ -318,7 +335,7 @@ class PSTVerifier:
                     diff=_build_simple_diff(an.code_evidence, repl),
                 ))
 
-    def _check_pulsed_dose_rate_timing(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+    def _check_pulsed_dose_rate_timing(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
         """
         断言 8: 高剂量率脉冲束流剂量率计算必须以微观脉冲持续时间 (如 5*us) 为分母。
         若以默认宏观周期 (如 1.0 s) 为分母，会导致瞬态脉冲剂量率被低估数十万倍。
