@@ -1,0 +1,135 @@
+{
+  "task_id": "T2-1",
+  "name": "Ground-truth PST specification for T2-1",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T2-1/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "fGun->SetParticleEnergy(661.657*keV);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->SetParticlePosition(G4ThreeVector());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "fGun->SetParticleMomentumDirection(G4ThreeVector(s*std::cos(p), s*std::sin(p), c));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_fetch",
+      "action": "Fetch",
+      "physical_operation": "fetch_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "if (st->GetTotalEnergyDeposit() > 0.) gEdep++;",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_convert",
+      "action": "Convert",
+      "physical_operation": "normalize_per_primary",
+      "physical_quantity": "normalization_scale",
+      "conservation_domain": "dimension_linearity",
+      "expected_invariant": "per_primaries_or_becquerel_normalization",
+      "code_evidence": "G4double n = r->GetNumberOfEvent();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new Detector);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(G4PhysListFactory().GetReferencePhysList(\"QGSP_BIC_HP\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->BeamOn(n);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_11_accumulate",
+      "action": "Accumulate",
+      "physical_operation": "accumulate_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "gEdep ++ 1;",
+      "confidence": 1.0
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "MISSING_WEIGHT_SOURCE",
+      "target_id": "node_11_accumulate",
+      "edge_type": "WEIGHT_COUPLING",
+      "description": "DISCONNECTED: Tally accumulates without multiplying GetWeight()",
+      "carrier_quantity": "track_weight",
+      "is_satisfied": false
+    },
+    {
+      "source_id": "node_11_accumulate",
+      "target_id": "EndOfEventAction_Closure",
+      "edge_type": "LIFECYCLE_CONTAINER",
+      "description": "Accumulator EnergyDeposit scoped in UserSteppingAction",
+      "carrier_quantity": null,
+      "is_satisfied": true
+    }
+  ]
+}

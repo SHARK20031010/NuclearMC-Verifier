@@ -1,0 +1,88 @@
+{
+  "task_id": "T3-3",
+  "name": "Ground-truth PST specification for T3-3",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T3-3/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "fGun->SetParticleMomentumDirection(G4ThreeVector(rho*std::cos(ph), rho*std::sin(ph), cz));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_convert",
+      "action": "Convert",
+      "physical_operation": "normalize_per_primary",
+      "physical_quantity": "normalization_scale",
+      "conservation_domain": "dimension_linearity",
+      "expected_invariant": "per_primaries_or_becquerel_normalization",
+      "code_evidence": "G4double kerma = gK/vol*1.602176634e-10/run->GetNumberOfEvent();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new Detector);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_define",
+      "action": "Define",
+      "physical_operation": "register_physics_constructor",
+      "physical_quantity": "reaction_model_family",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "appropriate_physics_package_binding",
+      "code_evidence": "pl->RegisterPhysics(new G4EmStandardPhysics());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(pl);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "for (G4int i = 0; i < 5; i++) { ra->SetTcool(tc[i]); rm->BeamOn(nev); }",
+      "confidence": 1.0
+    }
+  ],
+  "edges": []
+}

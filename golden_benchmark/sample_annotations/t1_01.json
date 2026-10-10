@@ -1,0 +1,98 @@
+{
+  "task_id": "T1-1",
+  "name": "Ground-truth PST specification for T1-1",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T1-1/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "if (trk->GetTrackID() == 1 && trk->GetMomentumDirection().z() > 0 &&",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "if (trk->GetTrackID() == 1 && trk->GetMomentumDirection().z() > 0 &&",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "auto* run = G4RunManagerFactory::CreateRunManager(G4RunManagerType::Serial);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "run->SetUserInitialization(new Detector);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_define",
+      "action": "Define",
+      "physical_operation": "register_physics_constructor",
+      "physical_quantity": "reaction_model_family",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "appropriate_physics_package_binding",
+      "code_evidence": "pl->RegisterPhysics(new G4EmStandardPhysics_option4());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "run->SetUserInitialization(pl);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "run->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "run->BeamOn((G4int)nEvents);",
+      "confidence": 1.0
+    }
+  ],
+  "edges": []
+}

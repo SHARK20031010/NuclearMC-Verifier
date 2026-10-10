@@ -1,0 +1,118 @@
+{
+  "task_id": "T1-4",
+  "name": "Ground-truth PST specification for T1-4",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T1-4/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "fGun->SetParticleEnergy(isN ? 14 * MeV : 1.25 * MeV);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->SetParticlePosition({0, 0, 0});",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "fGun->SetParticleMomentumDirection({0, 0, 1});",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_fetch",
+      "action": "Fetch",
+      "physical_operation": "inspect_boundary_status",
+      "physical_quantity": "topological_boundary_flag",
+      "conservation_domain": "geometry_topology",
+      "expected_invariant": "post_step_boundary_surface_evaluation",
+      "code_evidence": "if (pre->GetStepStatus() != fGeomBoundary || !pre->GetPhysicalVolume()) return;",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_fetch",
+      "action": "Fetch",
+      "physical_operation": "inspect_boundary_status",
+      "physical_quantity": "topological_boundary_flag",
+      "conservation_domain": "geometry_topology",
+      "expected_invariant": "post_step_boundary_surface_evaluation",
+      "code_evidence": "if (pre->GetStepStatus() != fGeomBoundary || !pre->GetPhysicalVolume()) return;",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_convert",
+      "action": "Convert",
+      "physical_operation": "normalize_per_primary",
+      "physical_quantity": "normalization_scale",
+      "conservation_domain": "dimension_linearity",
+      "expected_invariant": "per_primaries_or_becquerel_normalization",
+      "code_evidence": "G4cout << \"\\nT1-4  events=\" << r->GetNumberOfEvent()",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new Det);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new QGSP_BIC_HP);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_11_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->BeamOn(n);",
+      "confidence": 1.0
+    }
+  ],
+  "edges": []
+}

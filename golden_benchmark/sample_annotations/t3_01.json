@@ -1,0 +1,118 @@
+{
+  "task_id": "T3-1",
+  "name": "Ground-truth PST specification for T3-1",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T3-1/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "define_particle_species",
+      "physical_quantity": "particle_species",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "valid_particle_lookup",
+      "code_evidence": "fGun->SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle(\"neutron\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "fGun->SetParticleEnergy(0.025 * eV);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->SetParticlePosition(G4ThreeVector(0, 0, 0));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "COLLAPSED_TO_PENCIL_BEAM",
+      "code_evidence": "fGun->SetParticleMomentumDirection(G4ThreeVector(0, 0, 1));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(e);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_fetch",
+      "action": "Fetch",
+      "physical_operation": "fetch_reaction_process",
+      "physical_quantity": "physical_process_type",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "process_specific_reaction_filtering",
+      "code_evidence": "const G4VProcess* p = s->GetPostStepPoint()->GetProcessDefinedStep();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_fetch",
+      "action": "Fetch",
+      "physical_operation": "fetch_reaction_process",
+      "physical_quantity": "physical_process_type",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "process_specific_reaction_filtering",
+      "code_evidence": "const G4VProcess* p = s->GetPostStepPoint()->GetProcessDefinedStep();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new FTFP_BERT_HP);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(det);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_11_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->BeamOn(NEVT);",
+      "confidence": 1.0
+    }
+  ],
+  "edges": []
+}

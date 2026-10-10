@@ -1,0 +1,165 @@
+{
+  "task_id": "T2-3",
+  "name": "Ground-truth PST specification for T2-3",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T2-3/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "define_particle_species",
+      "physical_quantity": "particle_species",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "valid_particle_lookup",
+      "code_evidence": "fGun->SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle(\"neutron\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->SetParticlePosition(G4ThreeVector(0, 0, 0));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "fGun->SetParticleEnergy(sample.shoot() * 11. * MeV);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "fGun->SetParticleMomentumDirection(G4RandomDirection());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "fGun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_fetch",
+      "action": "Fetch",
+      "physical_operation": "fetch_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "gEdep += step->GetTotalEnergyDeposit();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "action_initialization_hook",
+      "physical_quantity": "thread_role",
+      "conservation_domain": "geometry_topology",
+      "expected_invariant": "master_worker_action_isolation",
+      "code_evidence": "SetUserAction(new Primary);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "action_initialization_hook",
+      "physical_quantity": "thread_role",
+      "conservation_domain": "geometry_topology",
+      "expected_invariant": "master_worker_action_isolation",
+      "code_evidence": "SetUserAction(new Scoring);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "runManager->SetUserInitialization(new Detector);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "runManager->SetUserInitialization(factory.GetReferencePhysList(\"QGSP_BIC_HP\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_11_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "runManager->SetUserInitialization(new Action);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_12_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "runManager->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_13_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "runManager->BeamOn(nEvents);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_14_accumulate",
+      "action": "Accumulate",
+      "physical_operation": "accumulate_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "gEdep += step->GetTotalEnergyDeposit();",
+      "confidence": 1.0
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "MISSING_WEIGHT_SOURCE",
+      "target_id": "node_14_accumulate",
+      "edge_type": "WEIGHT_COUPLING",
+      "description": "DISCONNECTED: Tally accumulates without multiplying GetWeight()",
+      "carrier_quantity": "track_weight",
+      "is_satisfied": false
+    },
+    {
+      "source_id": "node_14_accumulate",
+      "target_id": "EndOfEventAction_Closure",
+      "edge_type": "LIFECYCLE_CONTAINER",
+      "description": "Accumulator EnergyDeposit scoped in UserSteppingAction",
+      "carrier_quantity": null,
+      "is_satisfied": true
+    }
+  ]
+}

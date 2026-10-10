@@ -1,0 +1,26 @@
+{
+  "task_id": "WILD-01",
+  "name": "Secondary Vertex Yield Missing Step 1 Filter",
+  "nodes": [
+    {
+      "node_id": "gt_node_01",
+      "action": "Accumulate",
+      "physical_operation": "accumulate_secondary_yield",
+      "physical_quantity": "particle_count",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "UNFILTERED_STEPPING_INFLATION",
+      "code_evidence": "if (track->GetParentID() > 0) { fSecondaryYield++; }",
+      "confidence": 1.0
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "gt_node_01",
+      "target_id": "EndOfEventAction_Closure",
+      "edge_type": "LIFECYCLE_CONTAINER",
+      "description": "Accumulator SecondaryYield scoped in UserSteppingAction",
+      "carrier_quantity": null,
+      "is_satisfied": true
+    }
+  ]
+}

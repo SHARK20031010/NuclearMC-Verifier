@@ -1,0 +1,108 @@
+{
+  "task_id": "T1-8",
+  "name": "Ground-truth PST specification for T1-8",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T1-8/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "define_particle_species",
+      "physical_quantity": "particle_species",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "valid_particle_lookup",
+      "code_evidence": "gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle(\"gamma\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "define_particle_species",
+      "physical_quantity": "particle_species",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "valid_particle_lookup",
+      "code_evidence": "gun.SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle(\"gamma\"));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "gun.SetParticleEnergy(1 * MeV);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "gun.SetParticlePosition(G4ThreeVector(0,0,0));",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "gun.SetParticleMomentumDirection(G4RandomDirection());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_define",
+      "action": "Define",
+      "physical_operation": "assign_source_position",
+      "physical_quantity": "spatial_coordinates",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "source_spatial_containment",
+      "code_evidence": "gun.GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new Det()); rm->SetUserInitialization(new Phys());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->SetUserInitialization(new Det()); rm->SetUserInitialization(new Phys());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize(); rm->BeamOn(argc>1?std::atoi(argv[1]):100);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize(); rm->BeamOn(argc>1?std::atoi(argv[1]):100);",
+      "confidence": 1.0
+    }
+  ],
+  "edges": []
+}

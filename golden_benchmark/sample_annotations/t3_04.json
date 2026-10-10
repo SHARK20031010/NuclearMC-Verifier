@@ -1,0 +1,135 @@
+{
+  "task_id": "T3-4",
+  "name": "Ground-truth PST specification for T3-4",
+  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T3-4/code.cc",
+  "nodes": [
+    {
+      "node_id": "node_01_define",
+      "action": "Define",
+      "physical_operation": "define_particle_species",
+      "physical_quantity": "particle_species",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "valid_particle_lookup",
+      "code_evidence": "gun->SetParticleDefinition(G4Gamma::Gamma());",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_02_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "gun->SetParticleEnergy(e*MeV); gun->SetParticlePosition(pos);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_03_define",
+      "action": "Define",
+      "physical_operation": "assign_source_energy",
+      "physical_quantity": "kinetic_energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "positive_definite_kinetic_energy",
+      "code_evidence": "gun->SetParticleEnergy(e*MeV); gun->SetParticlePosition(pos);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_04_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "gun->SetParticleMomentumDirection(dir); gun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_05_sample",
+      "action": "Sample",
+      "physical_operation": "sample_direction",
+      "physical_quantity": "solid_angle",
+      "conservation_domain": "phase_space",
+      "expected_invariant": "4pi isotropic",
+      "code_evidence": "gun->SetParticleMomentumDirection(dir); gun->GeneratePrimaryVertex(ev);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_06_fetch",
+      "action": "Fetch",
+      "physical_operation": "fetch_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "gEdep += st->GetTotalEnergyDeposit();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_07_define",
+      "action": "Define",
+      "physical_operation": "register_physics_constructor",
+      "physical_quantity": "reaction_model_family",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "appropriate_physics_package_binding",
+      "code_evidence": "rm->SetUserInitialization(new Detector); rm->SetUserInitialization(new Physics);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_08_define",
+      "action": "Define",
+      "physical_operation": "register_physics_constructor",
+      "physical_quantity": "reaction_model_family",
+      "conservation_domain": "quantum_numbers",
+      "expected_invariant": "appropriate_physics_package_binding",
+      "code_evidence": "rm->SetUserInitialization(new Detector); rm->SetUserInitialization(new Physics);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_09_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->Initialize();",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_10_define",
+      "action": "Define",
+      "physical_operation": "configure_run_manager",
+      "physical_quantity": "execution_lifecycle",
+      "conservation_domain": "causality_clock",
+      "expected_invariant": "initialization_precedes_beamon",
+      "code_evidence": "rm->BeamOn(N);",
+      "confidence": 1.0
+    },
+    {
+      "node_id": "node_11_accumulate",
+      "action": "Accumulate",
+      "physical_operation": "accumulate_energy_deposit",
+      "physical_quantity": "energy",
+      "conservation_domain": "energy_momentum",
+      "expected_invariant": "energy_conservation_and_weight_coupling",
+      "code_evidence": "gEdep += st->GetTotalEnergyDeposit();",
+      "confidence": 1.0
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "MISSING_WEIGHT_SOURCE",
+      "target_id": "node_11_accumulate",
+      "edge_type": "WEIGHT_COUPLING",
+      "description": "DISCONNECTED: Tally accumulates without multiplying GetWeight()",
+      "carrier_quantity": "track_weight",
+      "is_satisfied": false
+    },
+    {
+      "source_id": "node_11_accumulate",
+      "target_id": "EndOfEventAction_Closure",
+      "edge_type": "LIFECYCLE_CONTAINER",
+      "description": "Accumulator EnergyDeposit scoped in UserSteppingAction",
+      "carrier_quantity": null,
+      "is_satisfied": true
+    }
+  ]
+}

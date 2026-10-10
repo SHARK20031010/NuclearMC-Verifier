@@ -1,0 +1,26 @@
+{
+  "task_id": "T1-6",
+  "name": "Geometric Splitting Missing Weight Coupling",
+  "nodes": [
+    {
+      "node_id": "gt_node_01",
+      "action": "Accumulate",
+      "physical_operation": "accumulate_fluence",
+      "physical_quantity": "particle_count_or_weight",
+      "conservation_domain": "variance_weight",
+      "expected_invariant": "UNWEIGHTED_COUNT_ACCUMULATION",
+      "code_evidence": "fFlux += 1.0;",
+      "confidence": 1.0
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "MISSING_WEIGHT_SOURCE",
+      "target_id": "gt_node_01",
+      "edge_type": "WEIGHT_COUPLING",
+      "description": "DISCONNECTED: Tally accumulates without multiplying GetWeight()",
+      "carrier_quantity": "track_weight",
+      "is_satisfied": false
+    }
+  ]
+}
