@@ -37,16 +37,28 @@
 
 ---
 
-## 三、Geant4 框架语义与生命周期契约
+## 三、控制流测度代数完备性与生命周期时序契约 (Measure-Theoretic Four-Basis & Lifecycle LTL)
 
-1. **步进生命周期**：
-   - 跨界面通量统计必须使用后步点（`PostStepPoint`）状态，或基于前步点（`PreStepPoint`）与边界状态联合判定；
+蒙卡模拟本质是对相空间乘积测度空间的离散估计 $I = \int_{\Omega} f \, d\mu$。控制流的统计正确性必须严格满足以下**四维测度代数完备基与时序公理**：
+
+1. **测度支撑集不变式 (Support Invariance · 条件槽位)**：
+   - 跨界面通量与界面粒子积分，其测度支撑域必须严格限制在几何界面 $\partial V$；
+   - 必须使用后步点（`PostStepPoint`）状态或联合判定；严禁将体内部步进或前步点误判为边界支撑集。
+2. **示性测度重度不变式 (Multiplicity Invariance · 次数槽位)**：
+   - 单粒子轨迹上示性测度严禁虚假倍乘膨胀；
+   - 次级粒子产生位置或生成产额计分，必须显式满足单步单射条件（如 `GetCurrentStepNumber() == 1`）或集合去重（`insert(trackID)`），严禁沿径迹在后续数百个步进中重复触发。
+3. **乘积测度纤维化重置不变式 (Fibration Invariance · 层级槽位)**：
+   - 乘积测度空间 $\Omega_{\text{Event}} \times \Omega_{\text{Run}}$ 必须严格满足有限生命周期自动机分层隔离；
+   - 事件级统计容器在进入新事件时，必须满足安全性时序命题 $\square (\text{Accumulate}(x) \implies \Diamond_{\text{past}} \text{Reset}(x, \text{Tier}_{\text{Event}}))$，严禁跨事件残留污染 (Inter-Event Stale Tally Accumulation)。
+4. **鞅信息流因果时序不变式 (Filtration Inversion · 顺序槽位)**：
+   - 物理观测量关于随机自然时序流 $\mathcal{F}_t$ 的取值必须先于状态更新与相互作用（$\text{Fetch}(E_{\text{kin}}) \ \mathcal{W} \ \text{ProcessInvocation}$）；
+   - 严禁核反应后抓初态能，或能量沉积累加逆向于粒子反冲。
+5. **探测器死层与灵敏体积物理隔离**：
    - 探测器灵敏体积前若存在死层（Dead Layer），死层内的能量沉积严禁计入光电峰积分。
-2. **过程与核素识别**：
+6. **过程与核素识别**：
    - 次级粒子物理过程查询优先使用 `GetCreatorProcess()`；
    - 激活产物与衰变子体必须确保加载相应衰变物理过程（`G4RadioactiveDecay`）及核素数据。
-3. **容器重置拓扑序**：
-   - Run 级统计容器与 Event 级累加变量生命周期必须显式隔离，禁止跨事件残留计数污染 (Inter-Event Stale Tally Accumulation)。
+
 
 ---
 

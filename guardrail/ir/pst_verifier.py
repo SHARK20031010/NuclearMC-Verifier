@@ -22,6 +22,8 @@ from guardrail.ir.pst_schema import (
     PSTNode,
     PSTEdge,
     PSTGraph,
+    MeasureBasis,
+    LifecycleState,
 )
 from guardrail.ir.intent_extractor import (
     PhysicsIntent,
@@ -111,6 +113,9 @@ class PSTVerifier:
 
         # 9. 检验跨事件容器生命周期重置 (Inter-Event Stale Tally Accumulation · PHYS-0046)
         self._check_inter_event_lifecycle_reset(graph, violations)
+
+        # 10. 检验控制流四维测度积分代数完备基 (Four-Dimensional Measure-Theoretic Basis Invariance)
+        self._check_measure_basis_invariance(graph, violations, intent)
 
         # 自动推断违规源码所在文件 (针对多文件工程)
         for v in violations:
@@ -403,3 +408,89 @@ class PSTVerifier:
                         proposed_replacement=repl,
                         diff=_build_simple_diff(acc.code_evidence, repl),
                     ))
+
+    def _check_measure_basis_invariance(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
+        """
+        断言 10: 控制流四维测度积分代数基完备性判定 (Four-Dimensional Measure-Theoretic Basis Invariance)
+        数学本质：I = ∫ f dμ，在测度论上闭环拦截四种正交失效：
+        1. SUPPORT (测度支撑域对齐 · 条件槽位): 界面通量必须在 ∂V 边界判定，严禁 PreStepPoint 或体内部点；
+        2. MULTIPLICITY (示性测度单射性 · 次数槽位): 次级粒子产生位置/产额计分必须满足 step == 1 或集合去重；
+        3. FIBRATION (纤维化层级拓扑重置 · 层级槽位): 事件级累加器跨事件必须显式重置清零；
+        4. FILTRATION (鞅流因果时序单调性 · 顺序槽位): 初态物理量取值必须先于相互作用过程状态修改。
+        """
+        abs_profile_data = graph.attributes.get("abstract_profile", {})
+
+        # 1. SUPPORT (支撑集门控检验)
+        support_viols = abs_profile_data.get("support_violations", [])
+        for sv in support_viols:
+            if sv.get("type") == "PreStepBoundaryMisalignment":
+                if not any(v.rule_id == "PST-INV-LIFECYCLE-01" for v in violations):
+                    line = sv.get("line", 1)
+                    code = sv.get("code", "")
+                    repl = code.replace("pre->", "post->").replace("PreStepPoint", "PostStepPoint")
+                    violations.append(PSTViolation(
+                        rule_id="PST-INV-CONTROL-SUPPORT-01",
+                        domain=ConservationDomain.CONTROL_FLOW,
+                        severity="CRITICAL",
+                        defect_name="界面通量统计测度支撑域错位 (Measure Support Misalignment)",
+                        description=(
+                            "控制流测度基分析表明：积分域 supp(μ) ≠ A_target。"
+                            "界面通量或跨界计分使用了前步点 (PreStepPoint)，未对齐界面支撑域 ∂V。"
+                            "导致出射漏出判定失效，破坏了界面测度积分的支撑集不变式。"
+                        ),
+                        violating_node_id=None,
+                        code_evidence=code,
+                        line_range=[line, line],
+                        remedy="将边界判定对齐至后步点：step->GetPostStepPoint()->GetStepStatus() == fGeomBoundary;",
+                        proposed_replacement=repl,
+                        diff=_build_simple_diff(code, repl),
+                    ))
+
+        # 2. MULTIPLICITY (示性测度重度倍乘检验)
+        mult_viols = abs_profile_data.get("multiplicity_violations", [])
+        for mv in mult_viols:
+            line = mv.get("line", 1)
+            code = mv.get("code", "")
+            repl = f"if (step->GetTrack()->GetCurrentStepNumber() == 1) {{\n    {code}\n}}"
+            violations.append(PSTViolation(
+                rule_id="PST-INV-CONTROL-MULTIPLICITY-01",
+                domain=ConservationDomain.CONTROL_FLOW,
+                severity="CRITICAL",
+                defect_name="次级粒子生成示性测度重度倍乘 (Multiplicity Inflation)",
+                description=(
+                    "控制流测度基分析表明：单射路径上示性函数重度 k > 1 (dμ → k·dμ)。"
+                    "次级粒子产生位置或产额计数在步进循环中缺乏单步单射守卫 (如 stepNumber == 1) 或集合去重。"
+                    "次级粒子在后续数百个步进中会被重复累计，导致微观反应产额严重倍乘虚高。"
+                ),
+                violating_node_id=None,
+                code_evidence=code,
+                line_range=[line, line],
+                remedy="添加单步示性守卫：if (step->GetTrack()->GetCurrentStepNumber() == 1) { ... }",
+                proposed_replacement=repl,
+                diff=_build_simple_diff(code, repl),
+            ))
+
+        # 3. FILTRATION (鞅流因果滤波逆向检验)
+        filt_viols = abs_profile_data.get("filtration_violations", [])
+        for fv in filt_viols:
+            line = fv.get("line", 1)
+            code = fv.get("code", "")
+            var_name = fv.get("var", "eKin")
+            repl = f"// 取值必须在相互作用前完成：\n// G4double {var_name} = step->GetPreStepPoint()->GetKineticEnergy();"
+            violations.append(PSTViolation(
+                rule_id="PST-INV-CONTROL-FILTRATION-01",
+                domain=ConservationDomain.CONTROL_FLOW,
+                severity="CRITICAL",
+                defect_name="鞅信息流因果滤波时序逆向 (Filtration Inversion)",
+                description=(
+                    "控制流测度基分析表明：物理观测量关于随机自然时序流 F_t 发生非因果引用 (t_fetch > t_event)。"
+                    "初态物理量 (如初态动能) 的提取发生在相互作用过程状态修改之后，或读取了末态步点。"
+                    "违背了随机过程鞅因果前驱单调性公理。"
+                ),
+                violating_node_id=None,
+                code_evidence=code,
+                line_range=[line, line],
+                remedy="在相互作用过程触发前或从 PreStepPoint 提前提取初态能量物理量。",
+                proposed_replacement=repl,
+                diff=_build_simple_diff(code, repl),
+            ))

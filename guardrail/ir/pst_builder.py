@@ -23,7 +23,11 @@ from guardrail.ir.pst_schema import (
     PSTNode,
     PSTEdge,
     PSTGraph,
+    MeasureBasis,
+    LifecycleState,
 )
+from guardrail.ir.abstract_interpreter import MicroAbstractInterpreter
+from guardrail.ir.mock_topology import MockTopologyRunner
 
 
 class PSTBuilder:
@@ -72,8 +76,17 @@ class PSTBuilder:
         for n in nodes_collected:
             graph.add_node(n)
 
+        # 1.5 微观物理抽象解释与几何拓扑干跑 (L0.5 Micro-Abstract Interpretation & Dry-Run)
+        interpreter = MicroAbstractInterpreter()
+        abs_profile = interpreter.interpret_code_snippet(source_code, func_name=filename)
+        graph.attributes["abstract_profile"] = abs_profile.model_dump()
+
+        topo_runner = MockTopologyRunner()
+        topo_manifest = topo_runner.run_dry(source_code)
+        graph.attributes["topology_manifest"] = topo_manifest.model_dump()
+
         # 2. L4: 基于数据流与因果时序组装 PST 依赖边 (Edges)
-        self._build_edges(graph, var_assignments, var_types, nodes_collected)
+        self._build_edges(graph, var_assignments, var_types, nodes_collected, abs_profile)
 
         return graph
 
@@ -484,6 +497,7 @@ class PSTBuilder:
         var_assignments: Dict[str, str],
         var_types: Dict[str, str],
         nodes: List[PSTNode],
+        abs_profile: Optional[Any] = None,
     ) -> None:
         """L4: 分析数据流与引用关系，连接 PST 边"""
         accumulate_nodes = graph.find_nodes_by_action(PhysicalAction.ACCUMULATE)
@@ -523,6 +537,27 @@ class PSTBuilder:
                             ))
                             edge_counter += 1
 
+            # 借助微观物理抽象解释器 (Points-to / Micro-Abstract Interpretation) 消除别名盲区
+            if abs_profile:
+                # 检查此累加语句是否被抽象解释器判定为携带权重
+                for w_acc in abs_profile.weighted_accumulations:
+                    if w_acc.get("line") in range(acc.line_range[0], acc.line_range[1] + 1):
+                        if w_acc.get("is_weighted"):
+                            # 确保存在 WeightFlow 边
+                            has_wf = any(e.target_id == acc.node_id and e.edge_type == PSTEdgeType.WEIGHT_FLOW for e in graph.edges)
+                            if not has_wf and fetch_nodes:
+                                for fn in fetch_nodes:
+                                    if fn.quantity == "TrackWeight":
+                                        graph.add_edge(PSTEdge(
+                                            edge_id=f"e_weight_alias_{edge_counter}",
+                                            source_id=fn.node_id,
+                                            target_id=acc.node_id,
+                                            edge_type=PSTEdgeType.WEIGHT_FLOW,
+                                            variable_name="alias_propagated_weight",
+                                        ))
+                                        edge_counter += 1
+                                        break
+
             # 检查时间因果流依赖 (CausalTime)
             for fn in fetch_nodes:
                 if fn.quantity in ("GlobalTime", "LocalTrackTime") and (fn.node_id in var_assignments.values() or fn.line_range[0] == acc.line_range[0]):
@@ -547,7 +582,7 @@ class PSTBuilder:
                     ))
                     edge_counter += 1
 
-            # 检查边界门控 (BoundaryGate)
+            # 检查边界门控 (BoundaryGate & MeasureGate)
             for fn in fetch_nodes:
                 if fn.quantity == "BoundaryCrossing":
                     graph.add_edge(PSTEdge(
@@ -555,6 +590,12 @@ class PSTBuilder:
                         source_id=fn.node_id,
                         target_id=acc.node_id,
                         edge_type=PSTEdgeType.BOUNDARY_GATE,
+                    ))
+                    graph.add_edge(PSTEdge(
+                        edge_id=f"e_measure_gate_{edge_counter}",
+                        source_id=fn.node_id,
+                        target_id=acc.node_id,
+                        edge_type=PSTEdgeType.MEASURE_GATE,
                     ))
                     edge_counter += 1
 

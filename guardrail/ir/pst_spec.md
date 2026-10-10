@@ -66,3 +66,33 @@ $$\forall v \in \mathcal{V}_{\text{Sample(Direction)}}, \quad \text{若 } v.\tex
 ### 判定定理 3：吸收剂量质量归一判定 (Absorbed Dose Mass Invariance)
 $$\forall v \in \mathcal{V}_{\text{Convert(Dose)}}, \quad \exists u \in \mathcal{V}_{\text{Define(Mass)}}, \quad \text{满足 } (u, v) \in \mathcal{E}_{\text{NormalizationDenominator}}$$
 **违约诊断**：吸收剂量（Gy = J/kg）未除以介质质量 $m = V \times \rho$，数值偏差数个数量级。
+
+---
+
+## 5. 控制流代数完备性定理：相空间测度积分的四维正交基 (Measure-Theoretic Four-Basis)
+
+在蒙特卡罗粒子输运中，物理计分与观测量统计本质上是对相空间概率测度乘积空间的离散估计：
+$$I = \int_{\Omega_{\text{Run}}} \int_{\Omega_{\text{Event}}} \int_{\Omega_{\text{Track}}} \int_{\Omega_{\text{Step}}} f(\mathbf{r}, \mathbf{p}, t) \, d\mu(\mathbf{r}, \mathbf{p}, t)$$
+
+控制流在图灵完备程序中的任意性受莱斯定理限制，但在蒙卡输运积分的数学本质下，控制流的失效在测度论上有且仅有以下**四种代数完备的封闭失效基底**：
+
+### 5.1 测度空间的四维正交基分解
+
+| 测度空间代数失效形式 | 形式化数学定义 | 映射控制流槽位 | PST 检验断言与 LTL 时序命题 |
+| :--- | :--- | :---: | :--- |
+| **1. 测度支撑集错位**<br>*(Support Misalignment)* | $\text{supp}(\mu) \neq A_{\text{target}}$ | **条件错 (Where/Which)** | $\forall v \in \mathcal{V}_{\text{Accumulate}}^{\text{Boundary}}, \ \exists e \in \mathcal{E}_{\text{MeasureGate}} \text{ 且 } e.\text{src}.\text{entity} = \text{PostStepPoint}$ |
+| **2. 示性测度重度倍乘**<br>*(Multiplicity Inflation)* | 单射链上示性函数重度 $k > 1$<br>$d\mu \to k \cdot d\mu$ | **次数错 (Multiplicity)** | $\square \left( \text{Accumulate}(x) \implies \bigcirc \neg \text{Accumulate}(x) \ \mathcal{U} \ \text{StepAdvanced} \right)$<br>次级粒子生成计分必须满足 `step == 1` 或集合去重 |
+| **3. 乘积测度纤维化坍缩**<br>*(Fibration Collapse)* | 乘积测度 $\Omega_{\text{Event}} \times \Omega_{\text{Run}}$<br>纤维商空间投影重置断裂 | **层级错 (Hierarchy)** | $\square \left( \text{Accumulate}(x) \implies \Diamond_{\text{past}} \text{Reset}(x, \text{Tier}_{\text{Event}}) \right)$<br>事件级累加器跨事件必须显式重置清零 |
+| **4. 鞅信息流因果滤波逆向**<br>*(Filtration Inversion)* | 随机过程滤过代数流 $\mathcal{F}_t$<br>发生非因果引用 ($t_{\text{fetch}} > t_{\text{event}}$) | **顺序错 (Filtration)** | $\text{Fetch}(E_{\text{kin}}) \ \mathcal{W} \ \text{ProcessInvocation}(\text{Inelastic})$<br>初态动能取值必须时序优先于末态状态更新 |
+
+> 💡 **代数完备性定理**：支撑集（Support）、重度（Multiplicity）、纤维化层级（Fibration）、鞅因果流（Filtration）构成了测度空间代数变换的正交完备基。任何控制流层面的输运统计错误，均可单射映射至该四维基底的至少一个基向量。
+
+---
+
+## 6. 微观抽象解释与拓扑干跑引擎 (Micro-Abstract Interpretation & Dry-Run)
+
+针对 C++ 宏展开、多重指针别名传递与动态查表建几何的 AST 盲区，PST 采用三层轻量分析流水线：
+1. **L0-Clang 预处理与 CHA**：基于 `compile_commands.json` 展开宏魔术，并用类层次分析 (CHA) 将基类指针派发绑定到用户派生实现；
+2. **L0.5-微观物理抽象域解释 (`MicroAbstractInterpreter`)**：追踪指针抽象态（$\text{PreStepPoint}, \text{PostStepPoint}$）与变量抽象态（$\text{Weighted}, \text{Unweighted}, \text{GlobalTime}$），在 $< 2\text{ms}$ 内打通别名传递链路；
+3. **L0.5-几何拓扑干跑 (`MockTopologyRunner`)**：利用轻量打桩模拟 CSG 实体与母子嵌套树，输出 `TopologyManifest`，精准分离死层与灵敏区体积。
+

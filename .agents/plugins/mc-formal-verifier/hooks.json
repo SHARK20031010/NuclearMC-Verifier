@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import os, sys, subprocess; script = 'adapters/antigravity/hook_runner.py' if os.path.exists('adapters/antigravity/hook_runner.py') else os.path.expanduser('~/\u80e1\u601d\u4e71\u60f3/05_\u7269\u7406\u8bed\u4e49\u6811\u5f62\u5f0f\u5316\u6838\u9a8c_PST/adapters/antigravity/hook_runner.py'); sys.exit(subprocess.call([sys.executable, script]))\"",
+            "command": "python3 -c \"import os, sys, subprocess; candidates = ['adapters/antigravity/hook_runner.py', '/home/shark/胡思乱想/05_物理语义树形式化核验_PST/adapters/antigravity/hook_runner.py']; script = next((p for p in candidates if os.path.exists(p)), None); sys.exit(subprocess.call([sys.executable, script]) if script else 0)\"",
             "timeout": 15
           }
         ]

@@ -27,6 +27,37 @@ class PhysicalAction(str, Enum):
     CONVERT = "Convert"       # 量纲归一：除以体积质量计算剂量 (Gy)、每源粒子归一化、单位变换
 
 
+class MeasureBasis(str, Enum):
+    """
+    控制流四维测度积分基 (Four-Dimensional Measure-Theoretic Basis)
+    将经验控制流槽位数学化提升为代数完备的积分测度变换基底：
+    - SUPPORT (支撑集 / 条件槽位): 测度积分支撑域对齐（例如边界通量必须在界面 ∂V 判定，或粒子种类滤镜）
+    - MULTIPLICITY (示性重数 / 次数槽位): 示性测度唯一触发，单步/首步单射性（防止沿径迹重复计数）
+    - FIBRATION (纤维层级 / 层级槽位): 乘积测度空间的生命周期层级隔离（Run x Event x Track x Step 变量隔离与重置）
+    - FILTRATION (鞅流因果 / 顺序槽位): 自然信息滤过时序因果性（相互作用改变状态前取值）
+    """
+    SUPPORT = "Support"             # 条件槽位 -> 测度支撑域对齐
+    MULTIPLICITY = "Multiplicity"   # 次数槽位 -> 示性测度无膨胀 (单射计数)
+    FIBRATION = "Fibration"         # 层级槽位 -> 纤维化层级拓扑重置
+    FILTRATION = "Filtration"       # 顺序槽位 -> 鞅因果流前驱单调性
+
+
+class LifecycleState(str, Enum):
+    """
+    Geant4 有限分层生命周期状态机 (Finite Hierarchical Lifecycle Automaton)
+    """
+    GLOBAL_INIT = "GlobalInit"         # 全局初始化：DetectorConstruction, PhysicsList
+    RUN_BEGIN = "RunBegin"             # BeginOfRunAction
+    EVENT_BEGIN = "EventBegin"         # BeginOfEventAction
+    TRACK_BEGIN = "TrackBegin"         # PreUserTrackingAction / Primary Generation
+    STEP_PRE = "StepPre"               # PreStepPoint 状态
+    STEP_ACTION = "StepAction"         # UserSteppingAction 相互作用进行中
+    STEP_POST = "StepPost"             # PostStepPoint 状态（包含几何跨界 fGeomBoundary）
+    TRACK_END = "TrackEnd"             # PostUserTrackingAction
+    EVENT_END = "EventEnd"             # EndOfEventAction
+    RUN_END = "RunEnd"                 # EndOfRunAction
+
+
 class ConservationDomain(str, Enum):
     """
     六大正交守恒总线域 (Six Orthogonal Conservation Domains)
@@ -37,6 +68,7 @@ class ConservationDomain(str, Enum):
     LIFECYCLE = "Lifecycle"           # 步进生命周期与几何边界域：后步点判定、死层隔离、容器拓扑隔离
     NUCLEAR = "Nuclear"               # 核素与微观反应域：截面连续性、衰变分支比、光核/热散射模型
     RING0_INTENT = "Ring0Intent"      # 上游需求与意图对齐域：物理量槽位、几何实体与实验基准对齐
+    CONTROL_FLOW = "ControlFlow"      # 控制流测度代数域：支撑集、重数、纤维化层级与鞅流时序
 
 
 class PSTEdgeType(str, Enum):
@@ -52,6 +84,8 @@ class PSTEdgeType(str, Enum):
     LIFECYCLE_HIERARCHY = "LifecycleHierarchy"               # 生命周期层级纽带：Run -> Event -> Track -> Step -> Hit
     LIFECYCLE_RESET = "LifecycleReset"                       # 容器重置纽带：BeginOfEvent / BeginOfRun 到累加变量的生命周期重置
     CALL_DISPATCH = "CallDispatch"                           # 跨模块调用分发纽带：如 SteppingAction -> RunAction::AddFlux
+    FILTRATION_ORDER = "FiltrationOrder"                     # 鞅流因果时序边：A 必须严格发生于 B 之前
+    MEASURE_GATE = "MeasureGate"                             # 测度支撑域条件门控：进入计数必须通过的测度判据
 
 
 class PSTNode(BaseModel):
@@ -72,6 +106,8 @@ class PSTNode(BaseModel):
     ast_node_type: Optional[str] = Field(default=None, description="底层 AST 节点类型，如 CallExpr, AssignExpr, DeclStmt")
     scope_context: Dict[str, Any] = Field(default_factory=dict, description="作用域上下文：类名、方法名、步进阶段、边界分支")
     attributes: Dict[str, Any] = Field(default_factory=dict, description="扩展物理属性，如单位、核素符号、固定向量值")
+    measure_basis: Optional[MeasureBasis] = Field(default=None, description="所属控制流四维测度积分基 (Support/Multiplicity/Fibration/Filtration)")
+    lifecycle_state: Optional[LifecycleState] = Field(default=None, description="所处的有限生命周期状态机状态")
 
 
 class PSTEdge(BaseModel):
@@ -103,6 +139,7 @@ class PSTGraph(BaseModel):
     nodes: List[PSTNode] = Field(default_factory=list, description="物理算子节点列表")
     edges: List[PSTEdge] = Field(default_factory=list, description="物理依赖边列表")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="图级元数据，如提取引擎版本、编译器配置")
+    attributes: Dict[str, Any] = Field(default_factory=dict, description="图级附加属性与抽象解释/拓扑分析概要")
 
     # ─────────────────────────────────────────────────────────────
     # 辅助索引与图遍历方法
@@ -179,6 +216,7 @@ class PSTGraph(BaseModel):
             ConservationDomain.LIFECYCLE: "#F3E5F5",     # 浅紫
             ConservationDomain.NUCLEAR: "#FFEBEE",       # 浅红
             ConservationDomain.RING0_INTENT: "#ECEFF1",  # 浅灰
+            ConservationDomain.CONTROL_FLOW: "#EDE7F6",  # 浅紫灰
         }
 
         for n in self.nodes:
@@ -197,6 +235,8 @@ class PSTGraph(BaseModel):
             PSTEdgeType.LIFECYCLE_HIERARCHY: '[color="#1565C0", penwidth=1.8, style="dashed", label="Lifecycle"]',
             PSTEdgeType.LIFECYCLE_RESET: '[color="#00838F", penwidth=1.8, label="Reset"]',
             PSTEdgeType.CALL_DISPATCH: '[color="#5E35B1", penwidth=1.5, label="CallDispatch"]',
+            PSTEdgeType.FILTRATION_ORDER: '[color="#D84315", penwidth=1.8, label="FiltrationOrder"]',
+            PSTEdgeType.MEASURE_GATE: '[color="#4527A0", stroke="dashed", penwidth=1.5, label="MeasureGate"]',
         }
 
         for e in self.edges:
