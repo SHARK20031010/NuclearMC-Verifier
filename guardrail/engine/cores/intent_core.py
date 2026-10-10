@@ -150,7 +150,8 @@ class IntentCore:
 
         # 校验 F9 与 F6 互斥关联
         f6 = answers.get("F6")
-        f9 = obj.get("F9", {}).get("v")
+        f9_val = obj.get("F9", {})
+        f9 = f9_val.get("v") if isinstance(f9_val, dict) else f9_val
         if f6 is not None and f9 is not None:
             if f6 == "per_source":
                 if f9 != "N/A":
@@ -174,8 +175,8 @@ class IntentCore:
         elif "warnings" in obj:
             errs.append("warnings 必须为列表")
 
-        n_u = sum(1 for f in FIELDS if obj.get(f, {}).get("src") == "U")
-        n_a = sum(1 for f in FIELDS if obj.get(f, {}).get("src") == "A")
+        n_u = sum(1 for f in FIELDS if isinstance(obj.get(f), dict) and obj.get(f).get("src") == "U")
+        n_a = sum(1 for f in FIELDS if isinstance(obj.get(f), dict) and obj.get(f).get("src") == "A")
         stats = {
             "user_decisions": n_u,
             "ai_decisions": n_a,
