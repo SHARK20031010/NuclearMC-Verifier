@@ -129,7 +129,8 @@ class PSTBuilder:
         if node.type == "call_expression" and "SetParticleMomentumDirection" in text:
             nid = f"n_sample_dir_{len(nodes_collected)+1}"
             is_4pi_iso = "G4RandomDirection" in text or ("cosTheta" in text and "sinTheta" in text) or ("twopi" in text and "G4UniformRand" in text)
-            is_pencil = bool(re.search(r"G4ThreeVector\s*\(\s*(?:0\s*,\s*0\s*,\s*1|0\s*,\s*0\s*,\s*-1)\s*\)", text))
+            _num = r"[-+]?(?:[0-9]+\.?[0-9]*|[0-9]*\.[0-9]+)"
+            is_pencil = bool(re.search(rf"G4ThreeVector\s*\(\s*{_num}\s*,\s*{_num}\s*,\s*{_num}\s*\)", text))
 
             # 上下文感知：精确检测是否为未准直的点放射源场景 (若显式声明为准直/平行束/垂直入射则不属于各向同性点源)
             full_context_str = code_bytes.decode("utf-8", errors="replace")

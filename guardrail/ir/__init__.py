@@ -14,6 +14,8 @@ from .pst_schema import (
 )
 from .pst_builder import PSTBuilder
 from .pst_verifier import PSTVerifier, PSTViolation, PSTVerificationReport
+from .cmake_parser import CMakeParser, CMakeProjectInfo, CMakeTarget
+from .pst_linker import PSTLinker
 
 __all__ = [
     "PhysicalAction",
@@ -26,4 +28,8 @@ __all__ = [
     "PSTVerifier",
     "PSTViolation",
     "PSTVerificationReport",
+    "CMakeParser",
+    "CMakeProjectInfo",
+    "CMakeTarget",
+    "PSTLinker",
 ]

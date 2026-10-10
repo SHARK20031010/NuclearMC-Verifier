@@ -11,6 +11,7 @@ guardrail/ir/pst_verifier.py —— 物理语义树守恒验证器 (PST Conserva
 from __future__ import annotations
 
 import difflib
+import re
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
@@ -37,6 +38,7 @@ class PSTViolation(BaseModel):
     remedy: str = Field(description="专家级规范修复建议")
     proposed_replacement: Optional[str] = Field(default=None, description="建议的替换代码片段")
     diff: Optional[str] = Field(default=None, description="标准 Unified Diff 补丁")
+    source_file: Optional[str] = Field(default=None, description="违约源码所在文件路径")
 
 
 class PSTVerificationReport(BaseModel):
@@ -101,6 +103,15 @@ class PSTVerifier:
         # 8. 检验高剂量率脉冲时钟微观归一化 (Pulse Dose Rate Temporal Normalization · T2-5)
         self._check_pulsed_dose_rate_timing(graph, violations)
 
+        # 自动推断违规源码所在文件 (针对多文件工程)
+        for v in violations:
+            if v.violating_node_id:
+                node = graph.get_node(v.violating_node_id)
+                if node and node.attributes.get("source_file"):
+                    v.source_file = node.attributes["source_file"]
+            if not v.source_file:
+                v.source_file = graph.source_file
+
         passed = len(violations) == 0
         return PSTVerificationReport(
             graph_id=graph.graph_id,
@@ -151,7 +162,8 @@ class PSTVerifier:
             if smp.quantity == "Direction":
                 is_point_source = smp.attributes.get("is_point_source", False)
                 if smp.metric == "FixedPencilBeam" and is_point_source:
-                    gun_var = "gun." if "gun." in smp.code_evidence else "fGun->"
+                    m_gun = re.search(r"(\w+(?:->|\.))\s*SetParticleMomentumDirection", smp.code_evidence)
+                    gun_var = m_gun.group(1) if m_gun else ("gun." if "gun." in smp.code_evidence else "fGun->")
                     repl = f"{gun_var}SetParticleMomentumDirection(G4RandomDirection());"
                     violations.append(PSTViolation(
                         rule_id="PST-INV-MEASURE-01",

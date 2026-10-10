@@ -4,10 +4,11 @@
 guardrail/companion.py —— MC-V 物理伴侣核心交互引擎 (Physics Companion Inspector)
 
 支持：
-1. 零 Flag 极简即时体检 (`mc-v <文件>`)
-2. 规约对齐体检 (`mc-v <文件> "需求说明"`)
-3. 一键物理修复 (`mc-v fix <文件>`)
-4. 实时伴侣监视模式 (`mc-v watch <文件>`)
+1. 零 Flag 极简即时体检 (`mc-v <文件>` 或 `mc-v <工程目录>` / `mc-v .`)
+2. 规约对齐体检 (`mc-v <目标> "需求说明"`)
+3. 一键物理修复 (`mc-v fix <目标>`) —— 支持单文件与多文件跨模块自动打补丁
+4. 实时伴侣监视模式 (`mc-v watch <目标>`) —— 监听所有源码修改，毫秒级刷新
+5. 8 大基准自动化评测 (`mc-v eval`)
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ from pydantic import BaseModel, Field
 from guardrail.ir.pst_builder import PSTBuilder
 from guardrail.ir.pst_verifier import PSTVerifier, PSTVerificationReport, PSTViolation
 from guardrail.ir.pst_schema import ConservationDomain, PSTGraph
+from guardrail.ir.cmake_parser import CMakeParser, CMakeProjectInfo, CMakeTarget
+from guardrail.ir.pst_linker import PSTLinker
 
 
 # ──────────────────────── ANSI 终端彩色定义 ────────────────────────
@@ -59,6 +62,13 @@ class DiagnosticEnvelope(BaseModel):
     violations: List[PSTViolation] = Field(default_factory=list)
     nodes_count: int = 0
     edges_count: int = 0
+    # 多文件 CMake 工程增强字段
+    is_project: bool = False
+    project_name: Optional[str] = None
+    target_name: Optional[str] = None
+    source_files: List[str] = Field(default_factory=list)
+    definitions: List[str] = Field(default_factory=list)
+    cross_edges_count: int = 0
 
 
 class MCCompanion:
@@ -67,6 +77,8 @@ class MCCompanion:
     def __init__(self):
         self.builder = PSTBuilder()
         self.verifier = PSTVerifier()
+        self.cmake_parser = CMakeParser()
+        self.linker = PSTLinker()
 
     def extract_spec(self, code_text: str, user_spec: Optional[str] = None) -> SpecContract:
         """从用户输入或源码头部注释中提取物理规约契约"""
@@ -86,8 +98,8 @@ class MCCompanion:
                 inferred_from="命令行自然语言输入",
             )
 
-        # 尝试从前 25 行代码注释推断
-        first_lines = "\n".join(code_text.splitlines()[:25])
+        # 尝试从前 35 行代码注释推断
+        first_lines = "\n".join(code_text.splitlines()[:35])
         
         # 1. 探测效率与点源
         if re.search(r"Cs-?137|HPGe|全能峰|探测效率|NaI", first_lines, re.IGNORECASE):
@@ -122,24 +134,75 @@ class MCCompanion:
                 observable="快中子飞行时间谱 (Time of Flight Spectrum)",
                 source="散裂靶脉冲中子源",
                 temporal_metric="绝对实验室全局时钟 (GetGlobalTime)",
-                normalization="每事件到达时间分箱计数",
+                normalization="每脉冲注入中子数归一化",
                 inferred_from="源码头部注释自动提取",
             )
-        # 默认基准
+
         return SpecContract(
-            observable="辐射输运物理宏观可观测响应量",
-            source="定义于 PrimaryGeneratorAction 的粒子源",
-            temporal_metric="连续时间推演 (ns/s)",
-            normalization="基于事件总数的平均值统计",
-            inferred_from="通用输运物理不变式基线",
+            observable="粒子输运微观沉积与出射统计",
+            source="各向同性/定向辐射源项",
+            temporal_metric="稳态输运时间无关",
+            normalization="每初级粒子 (Per Event)",
+            inferred_from="通用粒子输运物理缺省契约",
         )
 
     def inspect(self, filepath: str, user_spec: Optional[str] = None) -> DiagnosticEnvelope:
-        """对单个 C++ 源码执行极速物理语义分析并生成封包"""
-        p = Path(filepath)
+        """对单文件或整套 CMake 蒙卡工程执行物理语义树分析并生成诊断封包"""
+        p = Path(filepath).resolve()
         if not p.exists():
-            raise FileNotFoundError(f"文件未找到: {filepath}")
+            raise FileNotFoundError(f"文件或工程未找到: {filepath}")
 
+        # 判断是否为 CMake 工程目录或 CMakeLists.txt
+        is_cmake_proj = p.is_dir() or p.name == "CMakeLists.txt"
+
+        if is_cmake_proj:
+            t0 = time.perf_counter()
+            proj_info = self.cmake_parser.parse_project(str(p))
+            if not proj_info.all_source_files:
+                raise ValueError(f"在工程路径 {filepath} 下未找到任何 C++ 源码文件 (.cc / .cpp)")
+
+            # 读取全部工程代码用于规约推断与行数统计
+            all_texts = []
+            total_lines = 0
+            for sf in proj_info.all_source_files:
+                s_path = Path(sf)
+                if s_path.is_file():
+                    txt = s_path.read_text(encoding="utf-8", errors="replace")
+                    all_texts.append(txt)
+                    total_lines += len(txt.splitlines())
+
+            combined_corpus = "\n".join(all_texts)
+            contract = self.extract_spec(combined_corpus, user_spec)
+
+            # 调用 PSTLinker 缝合成全景全局图
+            global_graph = self.linker.link_project(proj_info)
+
+            # 形式化守恒断言核验
+            report = self.verifier.verify(global_graph)
+            t1 = time.perf_counter()
+
+            latency_ms = (t1 - t0) * 1000.0
+            cross_edges = sum(1 for e in global_graph.edges if "cross" in e.edge_id)
+            target_name = proj_info.targets[0].target_name if proj_info.targets else proj_info.project_name
+
+            return DiagnosticEnvelope(
+                source_file=str(p),
+                code_lines=total_lines,
+                latency_ms=round(latency_ms, 2),
+                spec_contract=contract,
+                passed=report.passed,
+                violations=report.violations,
+                nodes_count=len(global_graph.nodes),
+                edges_count=len(global_graph.edges),
+                is_project=True,
+                project_name=proj_info.project_name,
+                target_name=target_name,
+                source_files=proj_info.all_source_files,
+                definitions=proj_info.definitions,
+                cross_edges_count=cross_edges,
+            )
+
+        # 单文件处理流程
         code_text = p.read_text(encoding="utf-8", errors="replace")
         code_lines = len(code_text.splitlines())
 
@@ -165,6 +228,8 @@ class MCCompanion:
             violations=report.violations,
             nodes_count=len(graph.nodes),
             edges_count=len(graph.edges),
+            is_project=False,
+            source_files=[str(p)],
         )
 
     def render_dashboard(self, env: DiagnosticEnvelope) -> str:
@@ -176,7 +241,19 @@ class MCCompanion:
         lines.append(f"{BOLD}{CYAN}╭{border}╮{RESET}")
         lines.append(f"{BOLD}{CYAN}│{RESET}  {BOLD}MC-V 物理伴侣 · 粒子输运形式化守恒核验{RESET}"
                      f" {DIM}(耗时: {env.latency_ms} ms){RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
-        lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}目标文件:{RESET} {BOLD}{env.source_file}{RESET} {DIM}({env.code_lines} 行代码 · PST: {env.nodes_count} 节点, {env.edges_count} 边){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+
+        if env.is_project:
+            proj_title = f"{env.project_name or 'Project'}"
+            if env.target_name and env.target_name != env.project_name:
+                proj_title += f" [目标: {env.target_name}]"
+            lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}工程目标:{RESET} {BOLD}{proj_title}{RESET} {DIM}({len(env.source_files)} 编译单元 · {env.code_lines} 行代码){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+            lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}PST 全景图:{RESET} {env.nodes_count} 节点, {env.edges_count} 边 {DIM}(跨模块纽带: {env.cross_edges_count} 条){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+            if env.definitions:
+                macro_str = ", ".join(env.definitions)
+                lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}编译宏定义:{RESET} {YELLOW}{macro_str}{RESET}".ljust(width + 8) + f"{BOLD}{CYAN}│{RESET}")
+        else:
+            lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}目标文件:{RESET} {BOLD}{env.source_file}{RESET} {DIM}({env.code_lines} 行代码 · PST: {env.nodes_count} 节点, {env.edges_count} 边){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
+
         lines.append(f"{BOLD}{CYAN}├{border}┤{RESET}")
 
         # 1. 规约意图回执
@@ -211,14 +288,23 @@ class MCCompanion:
 
         # 3. 详细违约卡片与 Diff 处方
         if env.passed:
-            lines.append(f"\n{BOLD}{GREEN}  ✨ 恭喜：物理语义树符合全部守恒不变式！代码可安全交付或提交超算。{RESET}\n")
+            lines.append(f"\n{BOLD}{GREEN}  ✨ 恭喜：物理语义树符合全部守恒不变式！仿真代码可安全交付或提交超算。{RESET}\n")
         else:
             lines.append(f"\n{BOLD}{RED}🚨 检出 {len(env.violations)} 项物理守恒违约！请参阅以下机理诊断与处方：{RESET}\n")
 
             for idx, v in enumerate(env.violations, start=1):
                 lines.append(f"{BOLD}┌─ [{idx}] {v.defect_name} · 规则: {v.rule_id} [{v.domain.value}]{RESET}")
+                
+                # 确定所在文件名
+                src_filename = Path(v.source_file).name if v.source_file else (Path(env.source_file).name if not env.is_project else "")
+                loc_str = ""
+                if src_filename:
+                    loc_str += f"{CYAN}{src_filename}{RESET}:"
                 if v.line_range:
-                    lines.append(f"│  {DIM}代码位置: 第 {v.line_range[0]} 行{RESET}")
+                    loc_str += f"第 {v.line_range[0]} 行"
+
+                if loc_str:
+                    lines.append(f"│  {DIM}代码位置: {loc_str}{RESET}")
                 if v.code_evidence:
                     lines.append(f"│  {DIM}现场代码: {YELLOW}{v.code_evidence}{RESET}")
                 lines.append(f"│")
@@ -230,7 +316,7 @@ class MCCompanion:
 
                 if v.diff:
                     lines.append(f"│")
-                    lines.append(f"│  {BOLD}🔧 推荐 Diff 补丁:{RESET}")
+                    lines.append(f"│  {BOLD}🔧 推荐 Diff 补丁 ({src_filename}):{RESET}")
                     for dline in v.diff.splitlines():
                         if dline.startswith("-"):
                             lines.append(f"│     {RED}{dline}{RESET}")
@@ -240,15 +326,16 @@ class MCCompanion:
                             lines.append(f"│     {dline}")
                 lines.append(f"{BOLD}└────────────────────────────────────────────────────────────{RESET}\n")
 
-            lines.append(f"{DIM}👉 提示: 运行 {BOLD}mc-v fix {env.source_file}{RESET}{DIM} 即可一键自动应用上述推荐补丁{RESET}\n")
+            fix_cmd_target = env.source_file if not env.is_project else (env.project_name or ".")
+            lines.append(f"{DIM}👉 提示: 运行 {BOLD}mc-v fix {fix_cmd_target}{RESET}{DIM} 即可一键自动应用上述推荐补丁{RESET}\n")
 
         return "\n".join(lines)
 
     def fix(self, filepath: str) -> bool:
-        """一键修复：应用推荐补丁并自动复核"""
-        p = Path(filepath)
+        """一键修复：应用推荐补丁并自动复核 (支持单文件与多文件工程)"""
+        p = Path(filepath).resolve()
         if not p.exists():
-            print(f"{RED}错误: 文件未找到: {filepath}{RESET}", file=sys.stderr)
+            print(f"{RED}错误: 目标文件或工程未找到: {filepath}{RESET}", file=sys.stderr)
             return False
 
         env = self.inspect(filepath)
@@ -256,60 +343,89 @@ class MCCompanion:
             print(f"{GREEN}提示: {filepath} 当前已完全符合所有物理守恒律，无需修复！{RESET}")
             return True
 
-        # 读取原文件内容
-        code_text = p.read_text(encoding="utf-8")
-        
-        # 备份原文件
-        bak_path = p.with_suffix(p.suffix + ".bak")
-        shutil.copyfile(p, bak_path)
-        print(f"{CYAN}已备份原文件至: {bak_path}{RESET}")
-
-        modified_text = code_text
-        fixes_applied = 0
-
+        # 按具体源文件归类违约项
+        fixes_by_file: Dict[str, List[PSTViolation]] = {}
         for v in env.violations:
-            if v.code_evidence and v.proposed_replacement:
-                if v.code_evidence in modified_text:
-                    modified_text = modified_text.replace(v.code_evidence, v.proposed_replacement, 1)
-                    fixes_applied += 1
-                elif v.line_range:
-                    # 基于行号尝试替换
-                    lines = modified_text.splitlines()
-                    target_line_idx = v.line_range[0] - 1
-                    if 0 <= target_line_idx < len(lines):
-                        lines[target_line_idx] = v.proposed_replacement
-                        modified_text = "\n".join(lines)
-                        fixes_applied += 1
+            target_f = v.source_file or env.source_file
+            if target_f not in fixes_by_file:
+                fixes_by_file[target_f] = []
+            fixes_by_file[target_f].append(v)
 
-        if fixes_applied == 0:
+        total_fixes_applied = 0
+
+        for file_path_str, viols in fixes_by_file.items():
+            f_path = Path(file_path_str)
+            if not f_path.is_file():
+                continue
+
+            code_text = f_path.read_text(encoding="utf-8")
+            
+            # 备份原文件
+            bak_path = f_path.with_suffix(f_path.suffix + ".bak")
+            shutil.copyfile(f_path, bak_path)
+            print(f"{CYAN}已备份原文件至: {bak_path}{RESET}")
+
+            modified_text = code_text
+            file_fixes = 0
+
+            for v in viols:
+                if v.code_evidence and v.proposed_replacement:
+                    if v.code_evidence in modified_text:
+                        modified_text = modified_text.replace(v.code_evidence, v.proposed_replacement, 1)
+                        file_fixes += 1
+                    elif v.line_range:
+                        lines = modified_text.splitlines()
+                        target_line_idx = v.line_range[0] - 1
+                        if 0 <= target_line_idx < len(lines):
+                            lines[target_line_idx] = v.proposed_replacement
+                            modified_text = "\n".join(lines)
+                            file_fixes += 1
+
+            if file_fixes > 0:
+                f_path.write_text(modified_text, encoding="utf-8")
+                total_fixes_applied += file_fixes
+                print(f"{GREEN}已成功向 [{f_path.name}] 缝合 {file_fixes} 处物理补丁！{RESET}")
+
+        if total_fixes_applied == 0:
             print(f"{YELLOW}未能直接自动定位代码片段，请参考上述诊断手动修改。{RESET}")
             return False
 
-        p.write_text(modified_text, encoding="utf-8")
-        print(f"{GREEN}已成功缝合 {fixes_applied} 处物理补丁！正在重新复核...{RESET}\n")
-
-        # 重新复核
+        print(f"\n{CYAN}正在重新复核...{RESET}\n")
         new_env = self.inspect(filepath)
         print(self.render_dashboard(new_env))
         return new_env.passed
 
     def watch(self, filepath: str, poll_interval: float = 0.5) -> None:
-        """实时伴侣监视模式：保存文件即毫秒级刷新仪表盘"""
-        p = Path(filepath)
+        """实时伴侣监视模式：保存文件即毫秒级刷新仪表盘 (支持单文件与多文件工程)"""
+        p = Path(filepath).resolve()
         if not p.exists():
-            print(f"{RED}错误: 文件未找到: {filepath}{RESET}", file=sys.stderr)
+            print(f"{RED}错误: 目标文件或工程未找到: {filepath}{RESET}", file=sys.stderr)
             return
 
-        print(f"{CYAN}进入实时物理伴侣监视模式 · 监听文件: {filepath} (按 Ctrl+C 退出){RESET}")
+        print(f"{CYAN}进入实时物理伴侣监视模式 · 监听目标: {filepath} (按 Ctrl+C 退出){RESET}")
         last_mtime = 0.0
 
         try:
             while True:
-                try:
-                    curr_mtime = os.path.getmtime(filepath)
-                except OSError:
-                    time.sleep(poll_interval)
-                    continue
+                watch_files = [p]
+                if p.is_dir() or p.name == "CMakeLists.txt":
+                    proj_dir = p if p.is_dir() else p.parent
+                    watch_files = (
+                        list(proj_dir.glob("CMakeLists.txt"))
+                        + list(proj_dir.rglob("*.cc"))
+                        + list(proj_dir.rglob("*.cpp"))
+                        + list(proj_dir.rglob("*.hh"))
+                        + list(proj_dir.rglob("*.h"))
+                    )
+
+                curr_mtime = 0.0
+                for wf in watch_files:
+                    try:
+                        mt = os.path.getmtime(wf)
+                        if mt > curr_mtime:
+                            curr_mtime = mt
+                    except OSError:
+                        pass
 
                 if curr_mtime != last_mtime:
                     last_mtime = curr_mtime
@@ -333,6 +449,11 @@ def main():
 
     if not args:
         # 懒人自动搜寻
+        if Path("CMakeLists.txt").exists():
+            env = companion.inspect(".")
+            print(companion.render_dashboard(env))
+            sys.exit(0 if env.passed else 1)
+
         cc_files = list(Path(".").glob("*.cc")) + list(Path(".").glob("*.cpp"))
         if len(cc_files) == 1:
             target = str(cc_files[0])
@@ -342,11 +463,12 @@ def main():
         else:
             print(f"{BOLD}MC-V 物理伴侣 (Monte Carlo Formal Verifier){RESET}")
             print("用法:")
-            print(f"  {CYAN}mc-v <代码.cc>{RESET}               快速体检 (自动从注释提取物理意图)")
-            print(f"  {CYAN}mc-v <代码.cc> \"需求说明\"{RESET}    带指定需求体检")
-            print(f"  {CYAN}mc-v fix <代码.cc>{RESET}           一键应用推荐补丁并自动复核")
-            print(f"  {CYAN}mc-v watch <代码.cc>{RESET}         实时伴侣监视模式 (保存即刷红绿灯)")
-            print(f"  {CYAN}mc-v eval{RESET}                   运行 8 大基准任务自动化评测")
+            print(f"  {CYAN}mc-v .                       体检当前 CMake 蒙卡工程{RESET}")
+            print(f"  {CYAN}mc-v <代码.cc / 目录>          快速体检 (自动从源码与注释提取物理意图){RESET}")
+            print(f"  {CYAN}mc-v <代码.cc / 目录> \"需求说明\"{RESET}  带指定需求体检")
+            print(f"  {CYAN}mc-v fix <代码.cc / 目录>{RESET}     一键应用推荐补丁并自动复核")
+            print(f"  {CYAN}mc-v watch <代码.cc / 目录>{RESET}   实时伴侣监视模式 (保存即刷红绿灯)")
+            print(f"  {CYAN}mc-v eval{RESET}                     运行 8 大基准任务自动化评测")
             sys.exit(1)
 
     cmd = args[0]
@@ -377,11 +499,11 @@ def main():
         sys.exit(0)
 
     else:
-        # 默认体检文件
-        target_file = cmd
+        # 默认体检文件或工程目录
+        target_path = cmd
         spec_text = args[1] if len(args) > 1 else None
         try:
-            env = companion.inspect(target_file, user_spec=spec_text)
+            env = companion.inspect(target_path, user_spec=spec_text)
             print(companion.render_dashboard(env))
             sys.exit(0 if env.passed else 1)
         except Exception as e:
