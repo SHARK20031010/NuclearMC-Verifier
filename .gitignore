@@ -90,4 +90,3 @@ verify/
 测量方案/
 benchmarks/
 !benchmarks/eval_pst.py
-docs/
