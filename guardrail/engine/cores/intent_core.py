@@ -252,6 +252,32 @@ class IntentCore:
         intent_obj = extract_intent_block(raw_intent)
 
         if intent_obj is None:
+            # 尝试通过 IntentExtractor 从源码注释与上下文自适应推断环 0 意图
+            try:
+                from guardrail.ir.intent_extractor import IntentExtractor
+                extractor = IntentExtractor()
+                pi = extractor.extract(code_text)
+                if pi and pi.observable_desc:
+                    obs_val = pi.observable.value.lower() if hasattr(pi.observable, "value") else str(pi.observable).lower()
+                    f1a = "dose" if "dose" in obs_val else ("fluence" if "fluence" in obs_val else "other")
+                    intent_obj = {
+                        "F1a": f1a,
+                        "F1b": pi.observable_desc,
+                        "F2": "absorbed" if f1a == "dose" else "fluence_vol",
+                        "F3": "Gy" if f1a == "dose" else "cm-2",
+                        "F4": "volume_avg",
+                        "F5": "steady",
+                        "F6": "per_source",
+                        "F7": "report",
+                        "F8": "none",
+                        "F9": "N/A",
+                        "F10": "scalar",
+                        "warnings": []
+                    }
+            except Exception:
+                pass
+
+        if intent_obj is None:
             if require_intent:
                 issues.append({
                     "core": "INTENT_CORE",

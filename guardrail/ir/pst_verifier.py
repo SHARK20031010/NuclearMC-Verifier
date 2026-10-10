@@ -109,6 +109,9 @@ class PSTVerifier:
         # 8. 检验高剂量率脉冲时钟微观归一化 (Pulse Dose Rate Temporal Normalization · T2-5)
         self._check_pulsed_dose_rate_timing(graph, violations, intent)
 
+        # 9. 检验跨事件容器生命周期重置 (Inter-Event Stale Tally Accumulation · PHYS-0046)
+        self._check_inter_event_lifecycle_reset(graph, violations)
+
         # 自动推断违规源码所在文件 (针对多文件工程)
         for v in violations:
             if v.violating_node_id:
@@ -361,3 +364,42 @@ class PSTVerifier:
                     proposed_replacement=repl,
                     diff=_build_simple_diff(cn.code_evidence, repl),
                 ))
+
+    def _check_inter_event_lifecycle_reset(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """
+        断言 9: 事件级累加容器必须在 BeginOfEventAction 中显式重置 (Inter-Event Stale Tally Accumulation)。
+        若未重置，上一事件的残留计分将污染后续事件，导致多事件模拟产额与能谱严重畸变。
+        """
+        accumulate_nodes = graph.find_nodes_by_action(PhysicalAction.ACCUMULATE)
+        reset_nodes = [n for n in graph.nodes if n.quantity == "LifecycleReset" and n.attributes.get("tier") == "Event"]
+        reset_vars = {n.attributes.get("reset_var", "").lower() for n in reset_nodes}
+
+        for acc in accumulate_nodes:
+            tier = acc.scope_context.get("lifecycle_tier", "")
+            lhs = acc.attributes.get("lhs", "")
+            # 若是在 EventAction 中累加，或被标记为跨文件事件级累加
+            is_event_acc = (tier == "Event") or any(k in lhs.lower() for k in ("eventedep", "totalevent", "fevent"))
+            if is_event_acc or acc.attributes.get("missing_event_reset"):
+                var_key = lhs.split("->")[-1].strip().lower()
+                has_reset = any(var_key in rv or rv in var_key for rv in reset_vars if rv) or any(
+                    e.target_id == acc.node_id and e.edge_type == PSTEdgeType.LIFECYCLE_RESET for e in graph.edges
+                )
+                if not has_reset and not acc.attributes.get("cross_module_call"):
+                    repl = f"void EventAction::BeginOfEventAction(const G4Event*) {{\n  {lhs} = 0.0;\n}}"
+                    violations.append(PSTViolation(
+                        rule_id="PST-INV-LIFECYCLE-03",
+                        domain=ConservationDomain.LIFECYCLE,
+                        severity="CRITICAL",
+                        defect_name="事件级累加器未在 BeginOfEventAction 重置 (Inter-Event Stale Tally)",
+                        description=(
+                            f"PST 图分析表明：事件级累加变量 [{lhs}] 缺少来自 [BeginOfEventAction] 的 [LifecycleReset] 入度重置边。"
+                            "在 Geant4 事件循环中，事件级容器必须在每个事件开始时显式清零。"
+                            "未清零会导致前序事件的能量沉积或粒子计数残留污染后续事件，模拟结果严重失真虚高。"
+                        ),
+                        violating_node_id=acc.node_id,
+                        code_evidence=acc.code_evidence,
+                        line_range=list(acc.line_range),
+                        remedy=f"在 BeginOfEventAction 中显式清零该累加器：{lhs} = 0.0;",
+                        proposed_replacement=repl,
+                        diff=_build_simple_diff(acc.code_evidence, repl),
+                    ))

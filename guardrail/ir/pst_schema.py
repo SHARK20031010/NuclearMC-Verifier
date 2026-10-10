@@ -49,6 +49,9 @@ class PSTEdgeType(str, Enum):
     NORMALIZATION_DENOMINATOR = "NormalizationDenominator"   # 归一化分母传递：介质质量或源粒子数流向 Convert
     BOUNDARY_GATE = "BoundaryGate"                           # 几何界面状态门控：必须受 fGeomBoundary 保护
     VOLUME_CONTAINMENT = "VolumeContainment"                 # 几何拓扑从属关系：死层与灵敏体积物理隔离
+    LIFECYCLE_HIERARCHY = "LifecycleHierarchy"               # 生命周期层级纽带：Run -> Event -> Track -> Step -> Hit
+    LIFECYCLE_RESET = "LifecycleReset"                       # 容器重置纽带：BeginOfEvent / BeginOfRun 到累加变量的生命周期重置
+    CALL_DISPATCH = "CallDispatch"                           # 跨模块调用分发纽带：如 SteppingAction -> RunAction::AddFlux
 
 
 class PSTNode(BaseModel):
@@ -191,6 +194,9 @@ class PSTGraph(BaseModel):
             PSTEdgeType.BOUNDARY_GATE: '[color="#6A1B9A", stroke="dashed", label="BoundaryGate"]',
             PSTEdgeType.VOLUME_CONTAINMENT: '[color="#455A64", style="dotted", label="Containment"]',
             PSTEdgeType.DATA_DEPENDENCY: '[color="#9E9E9E", label="DataDep"]',
+            PSTEdgeType.LIFECYCLE_HIERARCHY: '[color="#1565C0", penwidth=1.8, style="dashed", label="Lifecycle"]',
+            PSTEdgeType.LIFECYCLE_RESET: '[color="#00838F", penwidth=1.8, label="Reset"]',
+            PSTEdgeType.CALL_DISPATCH: '[color="#5E35B1", penwidth=1.5, label="CallDispatch"]',
         }
 
         for e in self.edges:

@@ -7,6 +7,11 @@
 # 全局总开关：
 # true  -> 在所有 5 大 Harness 中激活 5 大守恒不变式硬性门禁与 AST 审查
 # false -> 严格 0ms No-Op 穿透模式，各 Harness 立即放行，零性能损耗与零干扰
+# 状态记录（2026-10-10）：
+# 此前因单文件局限性引发的三大误报已全部系统性修复并恢复启用：
+#   [1] RING0_CONFIRMATION：IntentExtractor 支持代码内自推导规约，适配缺失外源 prompt 的场景；
+#   [2] BEAM_FLATTENING_FILTER：正则修复科学计数法 (如 1.0e-4) 与材料字符串误伤；
+#   [3] WEIGHT_FLUX_CONSERVATION：落地 CMake 驱动的跨文件 PST 全局图感知与权重数据流传播。
 enabled: true
 
 # 阻断模式：

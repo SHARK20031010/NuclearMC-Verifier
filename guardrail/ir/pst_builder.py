@@ -98,7 +98,24 @@ class PSTBuilder:
         elif node_type == "function_definition":
             declarator = node.child_by_field_name("declarator")
             method_name = self._extract_function_name(declarator, code_bytes) or "AnonymousFunction"
-            context = {**context, "method": method_name}
+            cls_name = context.get("class") or ""
+            full_scope = f"{cls_name}::{method_name}" if cls_name else method_name
+            tier = "Global"
+            if any(k in full_scope for k in ("RunAction", "BeginOfRun", "EndOfRun")):
+                tier = "Run"
+            elif any(k in full_scope for k in ("EventAction", "BeginOfEvent", "EndOfEvent")):
+                tier = "Event"
+            elif any(k in full_scope for k in ("TrackingAction", "PreUserTracking", "PostUserTracking")):
+                tier = "Track"
+            elif any(k in full_scope for k in ("SteppingAction", "UserSteppingAction")):
+                tier = "Step"
+            elif any(k in full_scope for k in ("SensitiveDetector", "ProcessHits")):
+                tier = "Hit"
+            elif any(k in full_scope for k in ("DetectorConstruction", "Construct")):
+                tier = "Geometry"
+            elif any(k in full_scope for k in ("PrimaryGenerator", "GeneratePrimaries")):
+                tier = "Source"
+            context = {**context, "method": method_name, "lifecycle_tier": tier}
 
         elif node_type == "if_statement":
             cond_node = node.child_by_field_name("condition")
@@ -316,10 +333,45 @@ class PSTBuilder:
                     attributes={"lhs": lhs_text, "rhs": rhs_text, "has_pulse_time": has_micro_pulse},
                 ))
 
-            # (D) 常规物理计分累加 (Accumulate: Fluence / PulseHeight / TOF)
-            # 过滤掉初始声明零赋值 (如 static double gFlux = 0.0;)
-            is_zero_init = (node.type == "init_declarator") and rhs_text in ("0", "0.0", "0.", "0.0f", "false", "nullptr", "NULL")
-            if not is_zero_init and any(k in lhs_text.lower() for k in ("flux", "tally", "edep", "dose", "count", "tof", "yield")):
+            # (D) 生命周期状态重置检测 (Define: LifecycleReset)
+            current_tier = context.get("lifecycle_tier") or ""
+            current_method = context.get("method") or ""
+            is_zero_val = rhs_text in ("0", "0.0", "0.", "0.0f", "false", "nullptr", "NULL")
+            if is_zero_val:
+                if current_tier == "Event" or "BeginOfEvent" in current_method:
+                    nid = f"n_reset_event_{len(nodes_collected)+1}"
+                    nodes_collected.append(PSTNode(
+                        node_id=nid,
+                        action=PhysicalAction.DEFINE,
+                        domain=ConservationDomain.LIFECYCLE,
+                        quantity="LifecycleReset",
+                        metric="EventLevelReset",
+                        expected_invariant="InterEventStateReset",
+                        code_evidence=text,
+                        line_range=lines,
+                        ast_node_type=node.type,
+                        scope_context=dict(context),
+                        attributes={"reset_var": lhs_text, "tier": "Event"},
+                    ))
+                elif current_tier == "Run" or "BeginOfRun" in current_method:
+                    nid = f"n_reset_run_{len(nodes_collected)+1}"
+                    nodes_collected.append(PSTNode(
+                        node_id=nid,
+                        action=PhysicalAction.DEFINE,
+                        domain=ConservationDomain.LIFECYCLE,
+                        quantity="LifecycleReset",
+                        metric="RunLevelReset",
+                        expected_invariant="InterRunStateReset",
+                        code_evidence=text,
+                        line_range=lines,
+                        ast_node_type=node.type,
+                        scope_context=dict(context),
+                        attributes={"reset_var": lhs_text, "tier": "Run"},
+                    ))
+
+            # (E) 常规物理计分累加 (Accumulate: Fluence / PulseHeight / TOF)
+            # 过滤掉初始声明零赋值与重置清零 (如 static double gFlux = 0.0; 或 fRunFlux = 0.0;)
+            if not is_zero_val and any(k in lhs_text.lower() for k in ("flux", "tally", "edep", "dose", "count", "tof", "yield")):
                 nid = f"n_accumulate_{len(nodes_collected)+1}"
                 quantity = "FluenceScore" if "flux" in lhs_text.lower() else ("PulseHeight" if "edep" in lhs_text.lower() else "TimeOfFlightTally")
 
@@ -334,6 +386,56 @@ class PSTBuilder:
                     ast_node_type=node.type,
                     scope_context=dict(context),
                     attributes={"lhs": lhs_text, "rhs": rhs_text},
+                ))
+
+        # ── 6.5 几何逻辑体与死层/灵敏区定义 (Define: LogicalVolume) ──
+        elif "G4LogicalVolume" in text and ("new G4LogicalVolume" in text or "G4LogicalVolume(" in text):
+            m_vol = re.search(r'G4LogicalVolume\s*\([^,]+,[^,]+,\s*["\']([^"\']+)["\']', text)
+            if m_vol:
+                vol_name = m_vol.group(1)
+                nid = f"n_def_vol_{len(nodes_collected)+1}"
+                is_dead = any(k in vol_name.lower() for k in ("dead", "window", "inactive", "absorber", "guard"))
+                metric = "DeadLayerVolume" if is_dead else "ActiveSensitiveVolume"
+                nodes_collected.append(PSTNode(
+                    node_id=nid,
+                    action=PhysicalAction.DEFINE,
+                    domain=ConservationDomain.LIFECYCLE,
+                    quantity="LogicalVolume",
+                    metric=metric,
+                    expected_invariant="DeadLayerIsolated" if is_dead else "SensitiveVolumeValid",
+                    code_evidence=text,
+                    line_range=lines,
+                    ast_node_type=node.type,
+                    scope_context=dict(context),
+                    attributes={"volume_name": vol_name, "is_dead_layer": is_dead},
+                ))
+
+        # ── 6.6 跨模块动作方法调用与计分分发 (Accumulate / CallDispatch) ──
+        elif node.type == "call_expression" and any(k in text for k in ("->AddEdep", "->AddFlux", "->AddEnergy", "->FillH1", "->FillNtupleDColumn")):
+            m_call = re.search(r'(?:fRunAction|fEventAction|runAction|eventAction|pRunAction|analysisManager|\w+Action)\s*->\s*(\w+)\s*\((.*?)\)', text, re.S)
+            if m_call:
+                method_name = m_call.group(1)
+                args_text = m_call.group(2)
+                has_weight = bool(re.search(r"\b(?:w|weight|GetWeight|fWeight)\b", args_text, re.IGNORECASE))
+                nid = f"n_cross_call_{len(nodes_collected)+1}"
+                quantity = "FluenceScore" if "flux" in method_name.lower() else "PulseHeight"
+                nodes_collected.append(PSTNode(
+                    node_id=nid,
+                    action=PhysicalAction.ACCUMULATE,
+                    domain=ConservationDomain.VARIANCE if "flux" in method_name.lower() else ConservationDomain.PHASE_SPACE,
+                    quantity=quantity,
+                    metric="CrossModuleMethodCall",
+                    expected_invariant="WeightFlowCoupled" if has_weight else None,
+                    code_evidence=text,
+                    line_range=lines,
+                    ast_node_type=node.type,
+                    scope_context=dict(context),
+                    attributes={
+                        "cross_module_call": True,
+                        "method": method_name,
+                        "args_text": args_text,
+                        "has_weight": has_weight,
+                    },
                 ))
 
         # ── 7. 灵敏区与死层信号判选 (Accumulate: SensitiveRegionHit) (T4-4) ──
@@ -478,17 +580,13 @@ class PSTBuilder:
     def _extract_function_name(self, declarator_node: Optional[Node], code_bytes: bytes) -> Optional[str]:
         if not declarator_node:
             return None
-        curr = declarator_node
-        while curr:
-            if curr.type in ("identifier", "field_identifier"):
-                return self._node_text(curr, code_bytes)
-            sub = curr.child_by_field_name("declarator")
-            if sub:
-                curr = sub
-            elif curr.children:
-                curr = curr.children[0]
-            else:
-                break
+        text = self._node_text(declarator_node, code_bytes)
+        m = re.search(r"([a-zA-Z0-9_:]+)\s*\(", text)
+        if m:
+            return m.group(1).strip()
+        m2 = re.search(r"([a-zA-Z0-9_:]+)", text)
+        if m2:
+            return m2.group(1).strip()
         return None
 
     def _find_enclosing_assigned_var(self, node: Node, code_bytes: bytes) -> Optional[str]:

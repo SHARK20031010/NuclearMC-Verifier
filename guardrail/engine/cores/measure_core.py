@@ -178,9 +178,9 @@ class MeasureCore:
         issues = []
         is_linac_target = bool(
             (re.search(r"\b(?:Target|target|W_Target|w_target)\b", clean) and re.search(r"\b(?:G4_W|G4_Ta|tungsten|tantalum)\b", clean, re.IGNORECASE)) and
-            re.search(r"(?:e-|electron)", clean, re.IGNORECASE)
+            re.search(r"(?<![0-9.eE+-])(?:e-|electron)\b|\"e-\"", clean, re.IGNORECASE)
         )
-        has_water_phantom = bool(re.search(r"(?:Water|Phantom|water|phantom)", clean))
+        has_water_phantom = bool(re.search(r"\b(?:Water_?Phantom|Phantom|G4_WATER)\b|\bwater\b.*(?:phantom|box|tank)", clean, re.IGNORECASE))
         has_flattening = bool(re.search(r"(?:Flattening|flattening|G4Cons|Filter|filter)", clean))
         has_spatial_binning = bool(re.search(r"(?:PDD|pdd|Profile|profile|zBin|xBin|depth|flatness)", clean, re.IGNORECASE))
 

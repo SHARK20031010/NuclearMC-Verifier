@@ -37,7 +37,7 @@ def main():
     # 1. 开关检查：若关闭，立即 0ms 穿透放行
     if not is_enabled():
         # 输出空 JSON 合约
-        sys.stdout.write("{}\n")
+        sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
         sys.stdout.flush()
         return
 
@@ -45,11 +45,11 @@ def main():
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
-            sys.stdout.write("{}\n")
+            sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
             return
         payload = json.loads(raw_input)
     except Exception:
-        sys.stdout.write("{}\n")
+        sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
         return
 
     tool_call = payload.get("toolCall", {})

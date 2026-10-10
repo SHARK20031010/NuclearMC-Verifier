@@ -95,6 +95,43 @@ class CMakeParser:
             all_source_files=filtered,
         )
 
+    def find_enclosing_project(self, file_or_dir_path: str) -> Optional[CMakeProjectInfo]:
+        """
+        向上智能探测单文件或子目录所归属的 CMake 工程。
+        支持从深层子目录 (如 my_project/src/SteppingAction.cc) 自动定位根级 CMakeLists.txt，
+        解析整个多文件工程，避免单文件孤立核验导致的跨模块误报。
+        """
+        try:
+            p = Path(file_or_dir_path).resolve()
+        except Exception:
+            return None
+
+        if not p.exists():
+            return None
+
+        start_dir = p if p.is_dir() else p.parent
+        curr = start_dir
+        for _ in range(5):
+            cmake_candidate = curr / "CMakeLists.txt"
+            if cmake_candidate.is_file():
+                try:
+                    info = self.parse_project(str(curr))
+                    if info and info.all_source_files:
+                        p_str = str(p)
+                        # 如果目标是具体文件，验证其属于工程源码或处于工程目录树下
+                        if p.is_file():
+                            if p_str in info.all_source_files or p_str.startswith(str(curr)):
+                                return info
+                        else:
+                            return info
+                except Exception:
+                    pass
+            if curr.parent == curr:
+                break
+            curr = curr.parent
+
+        return None
+
     def _find_compile_commands(self, project_dir: Path) -> Optional[Path]:
         """寻找 compile_commands.json"""
         candidates = [

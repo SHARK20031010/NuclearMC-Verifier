@@ -74,6 +74,8 @@ class DiagnosticEnvelope(BaseModel):
     definitions: List[str] = Field(default_factory=list)
     cross_edges_count: int = 0
     code_manifest: Optional[CodeParameterManifest] = None
+    enclosing_project_detected: bool = False
+    inspected_target_file: Optional[str] = None
 
 
 class MCCompanion:
@@ -105,12 +107,17 @@ class MCCompanion:
         if not p.exists():
             raise FileNotFoundError(f"文件或工程未找到: {filepath}")
 
-        # 判断是否为 CMake 工程目录或 CMakeLists.txt
-        is_cmake_proj = p.is_dir() or p.name == "CMakeLists.txt"
+        # 判断是否为直接 CMake 工程，或单文件归属于一个上级 CMake 多文件工程
+        is_direct_cmake = p.is_dir() or p.name == "CMakeLists.txt"
+        enclosing_proj = None
+        if not is_direct_cmake:
+            enclosing_proj = self.cmake_parser.find_enclosing_project(str(p))
 
-        if is_cmake_proj:
+        is_multi_file_proj = is_direct_cmake or (enclosing_proj is not None and len(enclosing_proj.all_source_files) > 1)
+
+        if is_multi_file_proj:
             t0 = time.perf_counter()
-            proj_info = self.cmake_parser.parse_project(str(p))
+            proj_info = enclosing_proj if not is_direct_cmake else self.cmake_parser.parse_project(str(p))
             if not proj_info.all_source_files:
                 raise ValueError(f"在工程路径 {filepath} 下未找到任何 C++ 源码文件 (.cc / .cpp)")
 
@@ -128,7 +135,7 @@ class MCCompanion:
             intent, contract = self.extract_intent(combined_corpus, user_spec)
 
             # 提取代码实参清单与漂移检测
-            manifest = self.manifest_extractor.extract(str(p), intent=intent)
+            manifest = self.manifest_extractor.extract(proj_info.project_dir, intent=intent)
 
             # 调用 PSTLinker 缝合成全景全局图
             global_graph = self.linker.link_project(proj_info)
@@ -138,7 +145,7 @@ class MCCompanion:
             t1 = time.perf_counter()
 
             latency_ms = (t1 - t0) * 1000.0
-            cross_edges = sum(1 for e in global_graph.edges if "cross" in e.edge_id)
+            cross_edges = sum(1 for e in global_graph.edges if "cross" in e.edge_id or "lifecycle" in e.edge_id)
             target_name = proj_info.targets[0].target_name if proj_info.targets else proj_info.project_name
 
             return DiagnosticEnvelope(
@@ -158,6 +165,8 @@ class MCCompanion:
                 definitions=proj_info.definitions,
                 cross_edges_count=cross_edges,
                 code_manifest=manifest,
+                enclosing_project_detected=(not is_direct_cmake and enclosing_proj is not None),
+                inspected_target_file=str(p) if not is_direct_cmake else None,
             )
 
         # 单文件处理流程
@@ -210,6 +219,9 @@ class MCCompanion:
             proj_title = f"{env.project_name or 'Project'}"
             if env.target_name and env.target_name != env.project_name:
                 proj_title += f" [目标: {env.target_name}]"
+            if env.enclosing_project_detected and env.inspected_target_file:
+                target_f_name = Path(env.inspected_target_file).name
+                lines.append(f"{BOLD}{CYAN}│{RESET}  {MAGENTA}🌐 跨文件全局图感知模式:{RESET} {BOLD}{target_f_name}{RESET} {DIM}(自动绑定外层 CMake 工程){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
             lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}工程目标:{RESET} {BOLD}{proj_title}{RESET} {DIM}({len(env.source_files)} 编译单元 · {env.code_lines} 行代码){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
             lines.append(f"{BOLD}{CYAN}│{RESET}  {DIM}PST 全景图:{RESET} {env.nodes_count} 节点, {env.edges_count} 边 {DIM}(跨模块纽带: {env.cross_edges_count} 条){RESET}".ljust(width + 17) + f"{BOLD}{CYAN}│{RESET}")
             if env.definitions:
