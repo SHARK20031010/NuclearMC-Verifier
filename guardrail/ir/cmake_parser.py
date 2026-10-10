@@ -167,6 +167,15 @@ class CMakeParser:
         if m_proj:
             proj_name = m_proj.group(1)
 
+        # 预先替换 CMake 内置常用路径变量
+        p_dir_str = str(project_dir)
+        text = text.replace("${PROJECT_SOURCE_DIR}", p_dir_str)
+        text = text.replace("${CMAKE_CURRENT_SOURCE_DIR}", p_dir_str)
+        text = text.replace("${CMAKE_SOURCE_DIR}", p_dir_str)
+        text = text.replace("${PROJECT_NAME}", proj_name)
+        text = text.replace("${PROJECT_BINARY_DIR}", str(project_dir / "build"))
+        text = text.replace("${CMAKE_BINARY_DIR}", str(project_dir / "build"))
+
         # 2. 提取 set(...) 变量赋值
         variables: Dict[str, List[str]] = {}
         for m in re.finditer(r"set\s*\(\s*([a-zA-Z0-9_\-]+)\s+([^)]+)\)", text, re.IGNORECASE):
@@ -220,7 +229,9 @@ class CMakeParser:
                 m_var = re.match(r"\$\{([a-zA-Z0-9_\-]+)\}", s)
                 if m_var and m_var.group(1) in variables:
                     for v in variables[m_var.group(1)]:
-                        resolved_srcs.append(self._resolve_source_path(v, project_dir))
+                        p_s = self._resolve_source_path(v, project_dir)
+                        if p_s and Path(p_s).suffix in (".cc", ".cpp", ".cxx"):
+                            resolved_srcs.append(p_s)
                 elif s.endswith((".cc", ".cpp", ".cxx")):
                     resolved_srcs.append(self._resolve_source_path(s, project_dir))
 

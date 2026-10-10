@@ -465,6 +465,30 @@ class CodeManifestExtractor:
                         materials_map[assigned_var] = mat_name
                     materials_map[mat_name] = mat_name
 
+            # (J) 并行工作线程数 (SetNumberOfThreads)
+            elif "SetNumberOfThreads" in text:
+                args = self._extract_call_args(node, code_bytes)
+                if args:
+                    manifest.run_control.threads = f"{args[0]} 线程"
+                    manifest.run_control.evidence["threads"] = f"{filename}:{line_num}"
+
+            # (K) 随机数引擎种子 (setTheSeed)
+            elif "setTheSeed" in text:
+                manifest.run_control.random_engine_seed = text.strip(";")
+                manifest.run_control.evidence["seed"] = f"{filename}:{line_num}"
+
+            # (L) 径迹长度估计器通量计分 (Track-Length Estimator)
+            elif "AddSampleContribution" in text or ("StepL" in text and "volume" in text and "Weight" in text):
+                if not any("径迹长度" in t.observable_type for t in manifest.tallies):
+                    manifest.tallies.append(TallyManifest(
+                        tally_id=f"tally_tle_{len(manifest.tallies)+1}",
+                        observable_type="径迹长度中子通量 (Track-Length Fluence TLE: Σ w·ℓ/V)",
+                        scoring_variable="realfluxContribution",
+                        scoring_volume_or_surface="imp0 ~ imp7 (ParallelWorld 几何度分割区)",
+                        weight_preservation=True,
+                        code_location=f"{filename}:{line_num}",
+                    ))
+
         # ── 2. 对象创建表达式 (new_expression) ──
         elif node.type == "new_expression":
             type_node = node.child_by_field_name("type")
@@ -630,6 +654,12 @@ class CodeManifestExtractor:
                         manifest.physics.special_features.append("放射性衰变过程 (RadioactiveDecay)")
                 if "GetWeight" in txt:
                     manifest.run_control.variance_reduction = "减方差重要抽样 / 粒子统计权重流动 (Variance Reduction Enabled)"
+                if "E48" in txt and ("PrimaryGenerator" in sf or "Neutron" in txt):
+                    manifest.source.energies = ["47群反应堆裂变中子能谱 (E48[48]: 1e-5 eV ~ 17.33 MeV)"]
+                if "GB06" in txt or "ParallelWorld" in txt:
+                    manifest.run_control.variance_reduction = "重要性栅元几何分裂与轮盘赌减方差 (Generic Biasing: ParallelWorld Importance)"
+                if "G4RunManagerFactory" in txt and manifest.run_control.run_manager_type.startswith("G4RunManager"):
+                    manifest.run_control.run_manager_type = "G4RunManagerFactory (多线程并行引擎)"
 
     def _detect_drift(self, manifest: CodeParameterManifest, intent: PhysicsIntent) -> List[str]:
         """双向交叉校验：检测用户意图 (Ring 0) 与代码实参 (Ring 1-4) 之间的参数漂移"""
@@ -641,7 +671,7 @@ class CodeManifestExtractor:
                 warnings.append(
                     f"源项角分布漂移: 用户意图要求 4π 各向同性立体角辐射源，但代码实际设置为单向平行发射 [{manifest.source.direction}]！"
                 )
-        elif intent.source_symmetry == SourceSymmetry.PENCIL_BEAM:
+        elif intent.source_symmetry == SourceSymmetry.DIRECTIONAL_BEAM:
             if "各向同性" in manifest.source.angular_distribution_type or "4π" in manifest.source.angular_distribution_type:
                 warnings.append(
                     f"源项角分布漂移: 用户意图要求单向准直平行束，但代码实际采用了 4π 球面度立体角抽样！"
