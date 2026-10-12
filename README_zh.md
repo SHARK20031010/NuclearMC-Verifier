@@ -236,11 +236,6 @@ invariants:
 
 我们将蒙卡离散输运过程中的所有物理行为，严格正交解构为「定、抽、取、记、换」五个基础算子，并覆盖 31 个精细物理槽位：
 
-<div align="center">
-  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="五动作物理缺陷分布">
-  <p><i>图 2：大模型基线生成代码（Arm A）检出的 35 项关键物理缺陷在五大核心输运动作（Define、Sample、Fetch、Accumulate、Convert）上的分布拓扑。缺陷高密集中于 Sample（25.7%）、Accumulate（22.9%）与 Convert（22.9%），仅有 11.4% 处于 Define，直观解释了为什么传统顶层物理列表审计会失效。</i></p>
-</div>
-
 | 规范动作算子 | 物理语义职责 | 典型核验物理槽位 |
 | :--- | :--- | :--- |
 | **`Define` (定)** | 静态相空间与物性结构构建 | 几何实体、探测器组件角色（容器/灵敏晶体/死层）、多能点连续物性曲线 $f(E)$、热中子晶格散射核 $S(\alpha, \beta)$ 绑定、物理列表过程注册 |
@@ -360,11 +355,6 @@ NuclearMC-Verifier 原生支持多主流 Coding Agent，能够在模型生成代
 | **Wild Corpus (真实社区漏洞)** | 10 | 0.0% (0/10) | 0.0% (0/10) | **100.0% (10/10)** | 提取自 CERN 官方论坛与 GitHub 真实项目的长尾静默缺陷 |
 | **全量微平均 (Overall)** | **190** | **13.2% (25/190)** | **59.5% (113/190)** | **100.0% (190/190)** | **自省在复杂场景遭遇认知断崖，形式化核验实现 100% 物理闭环修复** |
 
-<div align="center">
-  <img src="figures/fig1_accuracy_gradient.png" width="75%" alt="准确率梯级对比">
-  <p><i>图 1：190 题各梯级通过率对比（模型多轮自查在复杂任务中遭遇认知断崖，挂载核验器实现全量 100% 闭环修复）</i></p>
-</div>
-
 全部 190 道题目完整实验数据集（含提示词、任务说明与多模型生成源码）已在 [Zenodo (10.5281/zenodo.23231733)](https://doi.org/10.5281/zenodo.23231733) 完整归档开源。仓库内在 [`benchmarks/`](benchmarks/) 维护代表性核验基准用例与 Golden-PST 专家真值图标注：
 - 详见数据集规约与复现指南：[benchmarks/README.md](benchmarks/README.md)。
 
@@ -388,12 +378,8 @@ NuclearMC-Verifier/
 │   ├── dsh/                           # DeepSeek Harness Cordis 插件
 │   ├── mcp/                           # Model Context Protocol 标准服务端
 │   └── skills/                        # 跨平台通用 Skill 定义
-├── .agents/                           # 项目插件与技能包 (mc-formal-verifier)
 ├── benchmarks/                        # 分级评测基准套件与 Golden-PST 黄金标注集
-├── docs/                              # 架构规范与 Geant4 5 大分区 API 字典
-├── figures/                           # 评测与缺陷可视化图表
 ├── scripts/                           # 统一控制与核验脚本
-├── tests/                             # 自动化测试套件 (44/44 单元与回归测试通过)
 ├── mc-verifier                        # 统一命令行总控可执行文件
 ├── PHYSICS_SPEC.md                    # 粒子输运蒙卡程序形式化规约白皮书
 ├── CITATION.cff                       # 学术引用元数据

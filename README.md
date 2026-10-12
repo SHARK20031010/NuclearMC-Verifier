@@ -240,11 +240,6 @@ A Monte Carlo transport code maps upstream user requirements, microscopic physic
 
 Monte Carlo transport dataflows are canonically decomposed into five primitive operators: **Define**, **Sample**, **Fetch**, **Accumulate**, and **Convert**, covering 31 fine-grained physical slots without empirical parameter tuning:
 
-<div align="center">
-  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="Physical Error Distribution across 5 Actions">
-  <p><i>Figure 2: Distribution of 35 critical physical errors across the 5 canonical transport actions (Define, Sample, Fetch, Accumulate, Convert) identified in baseline LLM generation (Arm A). Errors are heavily concentrated in Sample (25.7%), Accumulate (22.9%), and Convert (22.9%), demonstrating why top-level configuration auditing is fundamentally blind to downstream transport defects.</i></p>
-</div>
-
 | Canonical Action | Physical Semantic Role | Key Physical Slots Checked |
 | :--- | :--- | :--- |
 | **`Define`** | Static Phase Space & Medium Construction | Geometry solids, detector active vs. dead-layer roles, continuous property grids $f(E)$, thermal scattering $S(\alpha, \beta)$ binding, physics process registration |
@@ -364,11 +359,6 @@ To evaluate the guardrail's effectiveness, extensive multi-arm comparative exper
 | **Wild Corpus (Real Bugs)** | 10 | 0.0% (0/10) | 0.0% (0/10) | **100.0% (10/10)** | Long-tail silent defects harvested from CERN forums & GitHub repos |
 | **Overall (Micro-Average)** | **190** | **13.2% (25/190)** | **59.5% (113/190)** | **100.0% (190/190)** | **Self-reflection suffers cognitive cliff; verifier achieves 100% closed-loop remediation** |
 
-<div align="center">
-  <img src="figures/fig1_accuracy_gradient.png" width="75%" alt="Accuracy Gradient Comparison">
-  <p><i>Figure 1: Pass rate across evaluation tiers. Multi-turn self-reflection encounters cognitive cliffs in complex tasks, whereas NuclearMC-Verifier achieves 100% closed-loop remediation.</i></p>
-</div>
-
 The full 190-task experimental dataset (including prompts, task descriptions, and multi-arm codes) is archived on [Zenodo (10.5281/zenodo.23231733)](https://doi.org/10.5281/zenodo.23231733). Representative evaluation benchmarks and Golden-PST ground truth are maintained in [`benchmarks/`](benchmarks/):
 - See detailed benchmark documentation: [benchmarks/README.md](benchmarks/README.md).
 
@@ -392,12 +382,8 @@ NuclearMC-Verifier/
 │   ├── dsh/                           # DeepSeek Harness Cordis plugin
 │   ├── mcp/                           # Model Context Protocol standard server
 │   └── skills/                        # Cross-platform Skill definition
-├── .agents/                           # Agent plugin & skill bundle (mc-formal-verifier)
 ├── benchmarks/                        # Verification benchmark suite & Golden-PST annotations
-├── docs/                              # Architecture specifications & API catalogs
-├── figures/                           # Benchmark & diagnostic figures
 ├── scripts/                           # Unified CLI and verification scripts
-├── tests/                             # Automated test suite (44/44 unit & regression tests)
 ├── mc-verifier                        # Master CLI executable
 ├── PHYSICS_SPEC.md                    # Formal physics specification whitepaper
 ├── CITATION.cff                       # Academic citation metadata

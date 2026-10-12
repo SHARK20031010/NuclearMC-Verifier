@@ -92,9 +92,11 @@ verify/
 benchmark_tasks_reference/
 golden_benchmark/
 tools/
-docs/theory/
-docs/README_pst_prototype.md
-docs/README_zh_pst_prototype.md
+docs/
+figures/
+tests/
+pytest.ini
+.agents/
 scripts/build_tasks_reference.py
 CLAUDE.md
 
