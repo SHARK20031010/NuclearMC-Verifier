@@ -51,13 +51,37 @@ class PSTBuilder:
             content = f.read()
         return self.build(content, filename=filepath, graph_id=graph_id)
 
-    def build(self, source_code: str, filename: str = "code.cc", graph_id: Optional[str] = None) -> PSTGraph:
+    def build(
+        self,
+        source_code: str,
+        filename: str = "code.cc",
+        graph_id: Optional[str] = None,
+        enable_abstract_interpretation: bool = True,
+        enable_mock_topology: bool = True,
+    ) -> PSTGraph:
         """主入口：将 C++ 源码字符串转化为完整的 PSTGraph"""
         code_bytes = source_code.encode("utf-8")
         root = self.parse_source(code_bytes)
 
         gid = graph_id or f"pst_{os.path.basename(filename).replace('.', '_')}"
         graph = PSTGraph(graph_id=gid, source_file=filename)
+        graph.attributes["raw_code"] = source_code
+
+        # 0.5 微观物理抽象解释与几何拓扑干跑 (L0.5 Pre-Analysis & Dry-Run)
+        abs_profile = None
+        if enable_abstract_interpretation:
+            interpreter = MicroAbstractInterpreter()
+            abs_profile = interpreter.interpret_code_snippet(source_code, func_name=filename)
+            graph.attributes["abstract_profile"] = abs_profile.model_dump()
+        else:
+            graph.attributes["abstract_profile"] = {}
+
+        if enable_mock_topology:
+            topo_runner = MockTopologyRunner()
+            topo_manifest = topo_runner.run_dry(source_code)
+            graph.attributes["topology_manifest"] = topo_manifest.model_dump()
+        else:
+            graph.attributes["topology_manifest"] = {}
 
         # 1. 结构化 AST 递归遍历与上下文采集
         nodes_collected: List[PSTNode] = []
@@ -71,19 +95,11 @@ class PSTBuilder:
             nodes_collected=nodes_collected,
             var_assignments=var_assignments,
             var_types=var_types,
+            topology_manifest=graph.attributes.get("topology_manifest", {}),
         )
 
         for n in nodes_collected:
             graph.add_node(n)
-
-        # 1.5 微观物理抽象解释与几何拓扑干跑 (L0.5 Micro-Abstract Interpretation & Dry-Run)
-        interpreter = MicroAbstractInterpreter()
-        abs_profile = interpreter.interpret_code_snippet(source_code, func_name=filename)
-        graph.attributes["abstract_profile"] = abs_profile.model_dump()
-
-        topo_runner = MockTopologyRunner()
-        topo_manifest = topo_runner.run_dry(source_code)
-        graph.attributes["topology_manifest"] = topo_manifest.model_dump()
 
         # 2. L4: 基于数据流与因果时序组装 PST 依赖边 (Edges)
         self._build_edges(graph, var_assignments, var_types, nodes_collected, abs_profile)
@@ -98,6 +114,7 @@ class PSTBuilder:
         nodes_collected: List[PSTNode],
         var_assignments: Dict[str, str],
         var_types: Dict[str, str],
+        topology_manifest: Optional[Dict[str, Any]] = None,
     ) -> None:
         """递归遍历 AST 并维护作用域与语义标注"""
         node_type = node.type
@@ -136,11 +153,11 @@ class PSTBuilder:
             context = {**context, "condition": cond_text}
 
         # L3: 物理语义映射 (识别粒子源、步进抓取、计分累加与量纲转换)
-        self._match_physical_semantics(node, code_bytes, context, nodes_collected, var_assignments, var_types)
+        self._match_physical_semantics(node, code_bytes, context, nodes_collected, var_assignments, var_types, topology_manifest)
 
         # 递归遍历子节点
         for child in node.children:
-            self._traverse(child, code_bytes, context, nodes_collected, var_assignments, var_types)
+            self._traverse(child, code_bytes, context, nodes_collected, var_assignments, var_types, topology_manifest)
 
     def _match_physical_semantics(
         self,
@@ -150,6 +167,7 @@ class PSTBuilder:
         nodes_collected: List[PSTNode],
         var_assignments: Dict[str, str],
         var_types: Dict[str, str],
+        topology_manifest: Optional[Dict[str, Any]] = None,
     ) -> None:
         """对具体的 AST 节点执行微观物理算子识别与规约映射"""
         text = self._node_text(node, code_bytes).strip()
@@ -158,21 +176,25 @@ class PSTBuilder:
         # ── 1. 动量角分布抽样 (Sample: Direction) ──
         if node.type == "call_expression" and "SetParticleMomentumDirection" in text:
             nid = f"n_sample_dir_{len(nodes_collected)+1}"
-            is_4pi_iso = "G4RandomDirection" in text or ("cosTheta" in text and "sinTheta" in text) or ("twopi" in text and "G4UniformRand" in text)
+            full_context_str = code_bytes.decode("utf-8", errors="replace")
+
+            # 检测是否为线性极角抽样 (theta = ... * rand) 导致的测度退化
+            is_linear_theta = bool(re.search(r'\btheta\s*=\s*(?:[0-9\.]+\s*\*|\bpi\b|\bM_PI\b|3\.14159\w*\s*\*)\s*(?:G4UniformRand|rand|drand48)\b', full_context_str)) and ("cos(theta)" in full_context_str or "cosTheta" in full_context_str) and ("acos" not in full_context_str)
+
+            is_4pi_iso = ("G4RandomDirection" in text or ("cosTheta" in text and "sinTheta" in text) or ("twopi" in text and "G4UniformRand" in text)) and not is_linear_theta
             _num = r"[-+]?(?:[0-9]+\.?[0-9]*|[0-9]*\.[0-9]+)"
             is_pencil = bool(re.search(rf"G4ThreeVector\s*\(\s*{_num}\s*,\s*{_num}\s*,\s*{_num}\s*\)", text))
 
             # 上下文感知：精确检测是否为未准直的点放射源场景 (若显式声明为准直/平行束/垂直入射则不属于各向同性点源)
-            full_context_str = code_bytes.decode("utf-8", errors="replace")
             is_collimated = bool(re.search(r"(?:准直|collimat|pencil|平行束|垂直入射|正入射)", full_context_str, re.IGNORECASE))
             is_radioactive_point_source = bool(re.search(
                 r"(?:Cs-?137|Co-?60|Na-?22|Am-?241|Eu-?152|Ba-?133|\bpoint\s*source\b|\b点源\b|\bisotrop|\b各向同性\b)",
                 full_context_str,
                 re.IGNORECASE,
             ))
-            is_point_source_context = is_radioactive_point_source and not is_collimated
+            is_point_source_context = (is_radioactive_point_source or is_linear_theta) and not is_collimated
 
-            metric = "SolidAngle_4Pi" if is_4pi_iso else ("FixedPencilBeam" if is_pencil else "CustomDistribution")
+            metric = "SolidAngle_4Pi" if is_4pi_iso else ("FixedPencilBeam" if is_pencil else ("DegeneratePolarMeasure" if is_linear_theta else "CustomDistribution"))
             invariant = "dOmega = sin(theta) dtheta dphi (Uniform Sphere)" if is_4pi_iso else "DirectionalBeam"
 
             nodes_collected.append(PSTNode(
@@ -458,9 +480,22 @@ class PSTBuilder:
             consequent_node = node.child_by_field_name("consequence")
             consequent_text = self._node_text(consequent_node, code_bytes).strip() if consequent_node else ""
 
-            # 探测器事件有信号计数 (g_any 或 fHit)
-            if any(k in consequent_text for k in ("g_any", "fHit", "fPeak", "nHit")) or "any[" in consequent_text:
-                if ("eCry" in cond_text or "crystal" in cond_text) and ("eDead" in cond_text or "dead" in cond_text) and "+" in cond_text:
+            # 探测器事件有信号计数或能量累加 (g_any, fHit, fTotalEdep, fEdep, TotalEnergyDeposit 等)
+            is_det_hit = (
+                any(k in consequent_text for k in ("g_any", "fHit", "fPeak", "nHit", "TotalEdep", "totalEdep", "fDetectorHits", "fHits"))
+                or "any[" in consequent_text
+                or ("fTotalEdep" in consequent_text and "+=" in consequent_text)
+            )
+
+            if is_det_hit:
+                topo = topology_manifest or {}
+                dead_vols = set(topo.get("dead_layer_volumes", []))
+                sens_vols = set(topo.get("sensitive_volumes", []))
+
+                has_dead_by_topo = any(dv.lower() in cond_text.lower() for dv in dead_vols) if dead_vols else False
+                has_dead_literal = ("eDead" in cond_text or "dead" in cond_text.lower()) and ("+" in cond_text or "||" in cond_text)
+
+                if has_dead_by_topo or has_dead_literal:
                     nid = f"n_sens_hit_{len(nodes_collected)+1}"
                     nodes_collected.append(PSTNode(
                         node_id=nid,
@@ -475,7 +510,7 @@ class PSTBuilder:
                         scope_context=dict(context),
                         attributes={"condition": cond_text, "is_contaminated": True},
                     ))
-                elif ("eCry" in cond_text or "crystal" in cond_text) and ("+" not in cond_text or "eDead" not in cond_text):
+                elif ("eCry" in cond_text or "crystal" in cond_text.lower() or any(sv.lower() in cond_text.lower() for sv in sens_vols)):
                     nid = f"n_sens_hit_{len(nodes_collected)+1}"
                     nodes_collected.append(PSTNode(
                         node_id=nid,

@@ -212,6 +212,9 @@ case "$1" in
     check-pst)
         cmd_check_pst "$2" "${@:3}"
         ;;
+    manifest|inspect|params)
+        python3 "${ROOT_DIR}/guardrail/companion.py" manifest "$2" "${@:3}"
+        ;;
     eval-pst)
         cmd_eval_pst "${@:2}"
         ;;
@@ -226,6 +229,7 @@ case "$1" in
         echo "  $0 status           - 查看当前启闭状态及 5 大 Harness 就绪情况"
         echo "  $0 check <文件>     - 手动执行单文件形式化核验 (通用守恒引擎)"
         echo "  $0 check-pst <文件> - 执行物理语义树 (PST) 中间表示提取与形式化核验"
+        echo "  $0 inspect <文件>   - 物理实参透视 (直接扒出几何尺寸/材料/源项/物理列表/计分全景)"
         echo "  $0 eval-pst         - 运行 PST 全套基准评测 (8 组任务 16 份源码准确率与延迟)"
         echo "  $0 install-all      - 一键向本地全部 5 大 Harness 挂载技能与适配器"
         exit 1

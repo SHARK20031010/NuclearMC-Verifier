@@ -69,12 +69,42 @@ $ ./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_bu
     if (track->GetCurrentStepNumber() == 1) { /* Score vertex only at creation step */ }
 ```
 
+### 🏗️ Deterministic Pipeline Architecture
+
+```mermaid
+flowchart TD
+    subgraph Input["📥 Input Simulation Code"]
+        G4["Geant4 C++ Code\n(Single-file or Multi-file CMake Project)"]
+        SPEC["Physics Specification Contract\n(Observable, Scope, Source, Normalization)"]
+    end
+
+    subgraph Pipeline["⚡ Deterministic Static Pipeline (< 10 ms)"]
+        L1["1. Tree-sitter AST & CMake Parser\nMulti-file symbol resolution & post-order traversal"]
+        L2["2. Micro Abstract Interpreter\n• Pointer alias & weight flow propagation\n• Procedural loop formula folding (Cauchy/Sellmeier)\n• External data file (.csv/.dat) resolver"]
+        L3["3. Physical Semantic Tree (PST) IR\n5-Action × 31-Slot Canonical Operator Graph"]
+        L4["4. Orthogonal Conservation Verification\n• 6 Conservation Buses\n• 4-Basis Measure Invariants (S, M, F, T)"]
+    end
+
+    subgraph Output["📤 Output & Actionable Verdict"]
+        PASS["✅ PASS: Structurally Sound\n(0ms Runtime Overhead)"]
+        BLOCK["🚨 BLOCKED: Formal Violation Intercepted\nDetailed diagnosis + Code remediation patch"]
+        INSPECT["📋 Parameter & Material Manifest Dashboard\n(Geometry, Sources, Property Curves, Tallies)"]
+    end
+
+    Input --> L1 --> L2 --> L3 --> L4
+    L4 -->|Compliant| PASS
+    L4 -->|Defect Detected| BLOCK
+    L3 -.-> INSPECT
+```
+
 ---
 
 ## ✨ Key Features
 
 - ⚡ **Sub-10ms Pure AST Static Verification**: Requires no local Geant4 build or multi-GB runtime dependencies; driven by lightweight deterministic AST parsing and first-principles conservation rules (<10ms per file).
 - 🛡️ **6 Orthogonal Physics Conservation Buses**: Exhaustive coverage across relativistic causality, phase-space angular measure, fair-game weight flux, stepping lifecycle, nuclear decay chains, and upstream intent specifications.
+- 📐 **Four-Basis Measure Invariants**: Enforces mathematical measure consistency: Support Invariance ($\mathcal{S}$), Multiplicity Invariance ($\mathcal{M}$), Fibration Invariance ($\mathcal{F}$), and Filtration Invariance ($\mathcal{T}$).
+- 🔍 **Universal Parameter & Material Extractor**: Statically unfolds continuous property curves $f(E)$ from procedural `for` loops (e.g. Cauchy optics), resolves external `.csv`/`.dat` streams, classifies detector component roles, and validates thermal neutron $S(\alpha, \beta)$ scattering.
 - 🔌 **Native 5-Agent Ecosystem Adapters**: Out-of-the-box support for **Google Antigravity**, **DeepSeek Harness (DSH)**, **Anthropic Claude Code**, **OpenCode**, and standard **MCP (Model Context Protocol)**.
 - 🎯 **5-Action × 31-Slot Closed-Loop Taxonomy**: Deconstructs Monte Carlo dataflows into fundamental operators: `Define`, `Sample`, `Fetch`, `Accumulate`, `Convert` — leaving zero room for empirical parameter fitting.
 - 🧪 **Comprehensive 190-Task Benchmark Suite**: Spanning 6 core physics domains (shielding, dosimetry, activation, detectors, microdosimetry, and accelerator sources), with complete problem specs, prompts, and multi-arm comparative source codes.
@@ -100,6 +130,9 @@ pip install -r requirements.txt
 # Verify a single Geant4 C++ simulation file
 ./mc-verifier check path/to/your_simulation.cc
 
+# Inspect full physical parameter manifest (geometry, materials, curves, sources, tallies)
+./mc-verifier inspect path/to/your_simulation.cc
+
 # Quick Test: Check compliant baseline code from the benchmark suite
 ./mc-verifier check benchmark_tasks_reference/tier1_single_slot/T1-1/code/code_ArmA.cc
 
@@ -116,10 +149,56 @@ A unified command-line interface [`./mc-verifier`](mc-verifier) is provided in t
 | Command | Description |
 | :--- | :--- |
 | `./mc-verifier check <file>` | Run static physics conservation verification on specified Geant4 C++ code |
+| `./mc-verifier inspect <file>` | **Parameter Manifest**: Inspect extracted geometry, property curves, sources, & tally metrics in &lt;10ms |
+| `./mc-verifier check-pst <file>` | **PST Verification**: Build Physical Semantic Tree (PST) IR and assert measure-algebraic invariants |
+| `./mc-verifier eval-pst` | Run the standard PST evaluation benchmark across multi-arm source test cases |
 | `./mc-verifier on` | **Enable Guardrail**: Activate rigid physics conservation blocking across all agent platforms |
 | `./mc-verifier off` | **Disable Guardrail**: Deactivate blocking (strict 0ms No-Op pass-through mode) |
 | `./mc-verifier status` | View current guardrail switch status and harness readiness dashboard |
 | `./mc-verifier install-all` | Automatically register skills, hooks, and adapters to all detected agent harnesses |
+
+### 📋 Physical Parameter Manifest Showcase (`./mc-verifier inspect`)
+
+Run `./mc-verifier inspect` to instantly extract and audit physical parameters without compiling or running Geant4:
+
+```text
+$ ./mc-verifier inspect benchmarks/code_C/T4-3/code.cc
+
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  📋 Code Parameter Manifest (Universal Physics Parameter Extraction)             │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  Target: benchmarks/code_C/T4-3/code.cc                         [7.34 ms]        │
+│  Project Architecture: Single-file C++ Compilation Unit                          │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [1. Radiation Source Parameters]                                                │
+│    • Primary Energy: 1.0 * MeV           Beam On Events: 1                       │
+│    • Position: {0, 0, -5 * cm}           Direction Vector: {0, 0, 1}             │
+│    • Angular Measure: Pencil Beam (Collimated: {0, 0, 1})                        │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [2. Geometry Topology & Detector Roles]                                         │
+│    • world     [G4Box] Material: G4_AIR       Role: World Container              │
+│      └─ Dimensions: half_x=20*cm, half_y=20*cm, half_z=20*cm                    │
+│    • sc        [G4Box] Material: PlasticScint Role: Active Crystal / Sensitive   │
+│      └─ Dimensions: half_x=2.5*cm, half_y=2.5*cm, half_z=2.5*cm                 │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [3. Continuous Property Curves f(E)]                                            │
+│    • PlasticScint -> RINDEX                (N=10) [Monotonic Increasing · Sound] │
+│      └─ Domain: [1.50, 6.00] eV   Range: [1.33, 1.36]  Origin: Procedural Loop   │
+│    • PlasticScint -> SCINTILLATIONCOMPONENT1 (N=2) [Monotonic Increasing · Sound] │
+│      └─ Domain: [1.00, 6.00] eV   Range: [1.00, 1.00]  Origin: Declarative Array │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [5. Physics List & Microscopic Models]                                          │
+│    • Primary Physics: ModularPhysicsList   Modules: G4OpticalPhysics             │
+│    • Birks Quenching Constant: 0.126 * mm / MeV                                  │
+│    • Features: Optical Physics (G4OpticalPhysics), High-Precision Neutrons (HP)  │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [6. Tally Responses & Observables]                                              │
+│    • Fluence TLE: `realfluxContribution` [Weight Preservation: ENABLED]          │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [7. Run Control & Variance Reduction]                                           │
+│    • Engine: G4RunManager (Single Thread)  Variance Reduction: Analog Sampling   │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Configuration File (`.mc-verifier.yaml`)
 
@@ -153,6 +232,54 @@ A Monte Carlo transport code maps upstream user requirements, microscopic physic
 | ⏱️ **Causality & Timing Bus** | `causality_core.py` | **Laboratory Clock $\rightarrow$ Global Time $\rightarrow$ Particle Proper Lifetime $\rightarrow$ Coincidence Time Windows**<br>• Maintains relativistic causality: explicit isolation between global experiment time (`GetGlobalTime`) and particle local lifetime (`GetLocalTime`), monotonic time-of-flight (TOF) ordering, two-detector coincidence window gating, and pulsed beam / coolant residence time tracking. |
 | 🔄 **Stepping Lifecycle Bus** | `lifecycle_core.py` | **Track Creation $\rightarrow$ Step Advance $\rightarrow$ Boundary Crossing $\rightarrow$ Sensitive Volume Gating $\rightarrow$ Container Lifecycle Reset**<br>• Tracks discrete state machine transitions: secondary generation first-step filter (`GetCurrentStepNumber() == 1`), creator process identification (`GetCreatorProcess`), post-step boundary state checking, dead-layer energy deposition isolation, and inter-event stale tally contamination elimination. |
 | ⚖️ **Weight Flux & Variance Bus** | `variance_core.py` | **True Transport Measure $\rightarrow$ Splitting / Russian Roulette Bias $\rightarrow$ Dynamic Weight Compensation $\rightarrow$ Unbiased Estimator**<br>• Enforces the "Fair-Game" transport theorem: under geometric splitting or weight windows, split track weights $w$ decrease dynamically; tallies must strictly multiply weights $\sum (x_i \cdot w_i)$, preventing unweighted tally explosions of several million-fold. |
+
+---
+
+## 🎯 5-Action × 31-Slot Closed-Loop Taxonomy
+
+Monte Carlo transport dataflows are canonically decomposed into five primitive operators: **Define**, **Sample**, **Fetch**, **Accumulate**, and **Convert**, covering 31 fine-grained physical slots without empirical parameter tuning:
+
+<div align="center">
+  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="5-Action x 31-Slot Distribution">
+  <p><i>Figure 2: Distribution of the 31 fine-grained physical slots across the 5 canonical transport actions (Define, Sample, Fetch, Accumulate, Convert), forming a closed-loop causal chain.</i></p>
+</div>
+
+| Canonical Action | Physical Semantic Role | Key Physical Slots Checked |
+| :--- | :--- | :--- |
+| **`Define`** | Static Phase Space & Medium Construction | Geometry solids, detector active vs. dead-layer roles, continuous property grids $f(E)$, thermal scattering $S(\alpha, \beta)$ binding, physics process registration |
+| **`Sample`** | Stochastic Variate Generation | Spherical solid angle $d\Omega = \sin\theta d\theta d\phi$, radial density $r = R\sqrt{\xi}$, energy spectrum non-negative truncation, emission timing |
+| **`Fetch`** | Pre-Interaction Kinematic State Access | Particle kinetic energy prior to scattering (Filtration $\mathcal{F}_t$), local lifetime vs. global clock, creator process identity |
+| **`Accumulate`** | Phase Space Integration & Tally Scoring | Track-length fluence (TLE: $\sum w \ell / V$), surface flux, energy deposition, weight preservation ($w \cdot x$), secondary first-step filter |
+| **`Convert`** | Response Scaling & Normalization | Dose conversion ($Gy = J/kg$), FWHM Gaussian broadening, decay activity ($Bq \leftrightarrow Ci$), per-primary beam-current normalization |
+
+---
+
+## 📐 Four-Basis Measure Invariants & Lifecycle Axioms
+
+In stochastic transport simulation, continuous Phase-Space integration $I = \int_{\Omega} f \, d\mu$ is discretized. Statistical unbiasedness ($\mathbb{E}[\hat{I}] = I$) strictly requires satisfying the **Four-Basis Measure Invariants**:
+
+```mermaid
+graph LR
+    S["1. Support Invariance (S)<br>• Measure domain restricted to boundary dV<br>• PostStepPoint == fGeomBoundary"]
+    M["2. Multiplicity Invariance (M)<br>• Secondary vertex single-injection<br>• GetCurrentStepNumber() == 1 guard"]
+    F["3. Fibration Invariance (F)<br>• Product measure Omega_Event x Omega_Run<br>• Inter-event stale tally reset"]
+    T["4. Filtration Invariance (T)<br>• Natural filtration causal flow F_t<br>• Fetch(E_kin) precedes interaction update"]
+
+    S --> M --> F --> T
+```
+
+1. **Support Invariance ($\mathcal{S}$ · Boundary Gate)**:
+   - Interface particle flux must have its measure support strictly confined to the boundary manifold $\partial V$.
+   - Enforces `PostStepPoint` status checking; prevents interior steps from inflating boundary flux.
+2. **Multiplicity Invariance ($\mathcal{M}$ · Multiplicity Slot)**:
+   - Indicator measures along particle tracks must not spuriously multiply.
+   - Secondary particle yield scoring must satisfy single-step injection (`GetCurrentStepNumber() == 1`) or unique track ID sets (`insert(trackID)`), preventing hundreds of subsequent steps from triggering duplicate vertex scores.
+3. **Fibration Invariance ($\mathcal{F}$ · Hierarchy Slot)**:
+   - The product measure space $\Omega_{\text{Event}} \times \Omega_{\text{Run}}$ requires strict finite-lifecycle isolation.
+   - Event-level tally containers must satisfy the temporal safety property $\square (\text{Accumulate}(x) \implies \Diamond_{\text{past}} \text{Reset}(x, \text{Tier}_{\text{Event}}))$, eliminating inter-event stale tally leaks.
+4. **Filtration Invariance ($\mathcal{T}$ · Ordering Slot)**:
+   - Physical observables must be evaluated with respect to the forward natural stochastic filtration $\mathcal{F}_t$ prior to state updates.
+   - Prohibits fetching initial kinetic energy after reaction scattering, which causes systemic negative bias.
 
 ---
 

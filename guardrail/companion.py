@@ -19,6 +19,10 @@ import sys
 import time
 import shutil
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
 from typing import Dict, List, Optional, Any, Tuple
 from pydantic import BaseModel, Field
 

@@ -84,7 +84,12 @@ def _build_simple_diff(original: str, replacement: str) -> str:
 class PSTVerifier:
     """物理语义树形式化断言引擎 (Layer 5)"""
 
-    def verify(self, graph: PSTGraph, intent: Optional[PhysicsIntent] = None) -> PSTVerificationReport:
+    def verify(
+        self,
+        graph: PSTGraph,
+        intent: Optional[PhysicsIntent] = None,
+        enable_measure_basis: bool = True,
+    ) -> PSTVerificationReport:
         violations: List[PSTViolation] = []
 
         # 1. 检验公平博弈统计权重守恒 (Fair-Game Weight Invariance · T1-6)
@@ -115,7 +120,23 @@ class PSTVerifier:
         self._check_inter_event_lifecycle_reset(graph, violations)
 
         # 10. 检验控制流四维测度积分代数完备基 (Four-Dimensional Measure-Theoretic Basis Invariance)
-        self._check_measure_basis_invariance(graph, violations, intent)
+        if enable_measure_basis:
+            self._check_measure_basis_invariance(graph, violations, intent)
+
+        # 11. 检验闪烁介质非线性 Birks 饱和猝灭 (PHYS-INV-BIRKS-01)
+        self._check_scintillator_birks_quenching(graph, violations)
+
+        # 12. 检验光学光子介质折射率 RINDEX (PHYS-INV-OPTICAL-RINDEX-01)
+        self._check_optical_material_rindex(graph, violations)
+
+        # 13. 检验吸收剂量介质质量归一化 (PST-INV-SCALE-01)
+        self._check_dose_mass_normalization(graph, violations)
+
+        # 14. 检验运行管理器生命周期初始化契约 (PHYS-INV-RUN-01)
+        self._check_run_lifecycle_initialization(graph, violations)
+
+        # 15. 检验强子非弹性-弹性散射物理耦合 (PHYS-INV-HADRON-01)
+        self._check_hadron_elastic_coupling(graph, violations)
 
         # 自动推断违规源码所在文件 (针对多文件工程)
         for v in violations:
@@ -134,6 +155,150 @@ class PSTVerifier:
             violations_count=len(violations),
             violations=violations,
         )
+
+    def _strip_comments(self, src: str) -> str:
+        def repl_multiline(m):
+            return "\n" * m.group(0).count("\n")
+        src = re.sub(r"/\*.*?\*/", repl_multiline, src, flags=re.S)
+        src = re.sub(r"//[^\n]*", "", src)
+        return src
+
+    def _check_scintillator_birks_quenching(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """断言 11: 闪烁介质发光模拟必须配置 Birks 饱和猝灭常数 (PHYS-INV-BIRKS-01)"""
+        raw_code = graph.attributes.get("raw_code", "")
+        if not raw_code:
+            return
+        bare = self._strip_comments(raw_code).lower()
+        if "scintillationyield" in bare:
+            if "birks" not in bare and "saturation" not in bare:
+                violations.append(PSTViolation(
+                    rule_id="PHYS-INV-BIRKS-01",
+                    domain=ConservationDomain.LIFECYCLE,
+                    severity="CRITICAL",
+                    defect_name="闪烁介质缺失非线性 Birks 饱和猝灭常数 (Missing Birks Constant)",
+                    description=(
+                        "材料属性表配置了闪烁光产额 (SCINTILLATIONYIELD)，但未设置 Birks 猝灭常数。"
+                        "Geant4 默认 Birks 系数为 0 (无饱和猝灭)，快中子/反冲质子与高 LET 粒子光输出将被高估 5-10 倍。"
+                    ),
+                    violating_node_id=None,
+                    code_evidence="mpt->AddConstProperty(\"SCINTILLATIONYIELD\", ...)",
+                    remedy="配置材料 Birks 猝灭常数：scintMaterial->GetIonisation()->SetBirksConstant(0.126 * mm / MeV);",
+                ))
+
+    def _check_optical_material_rindex(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """断言 12: 光学光子传输介质必须在材质表中绑定折射率 RINDEX (PHYS-INV-OPTICAL-RINDEX-01)"""
+        raw_code = graph.attributes.get("raw_code", "")
+        if not raw_code:
+            return
+        bare = self._strip_comments(raw_code).lower()
+        has_optical = (
+            ("g4opticalphysics" in bare or "registerphysics(new g4opticalphysics" in bare)
+            or ("opticalphoton" in bare and "g4materialpropertiestable" in bare)
+            or ("g4materialpropertiestable" in bare and any(k in bare for k in ["scintillationyield", "cerenkov", "chirenkov"]))
+        )
+        if has_optical:
+            has_optical_medium = any(k in bare for k in ["cerenkov", "chirenkov", "契伦科夫", "g4materialpropertiestable", "mpt->"]) or any(k in bare for k in ["g4_sodium_iodide", "g4_water", "nai", "lyso"])
+            has_rindex = bool(re.search(r'Add(?:Const)?Property\s*\(\s*["\']RINDEX["\']', bare, re.I))
+            if has_optical_medium and not has_rindex:
+                violations.append(PSTViolation(
+                    rule_id="PHYS-INV-OPTICAL-RINDEX-01",
+                    domain=ConservationDomain.PHASE_SPACE,
+                    severity="CRITICAL",
+                    defect_name="光学光子介质未配置折射率 RINDEX (Missing Optical Refractive Index)",
+                    description=(
+                        "启用了光学光子或介质发光模拟，但材料属性表中未绑定折射率 RINDEX。"
+                        "缺失折射率导致几何界面无法计算斯涅尔定律折射与全反射，契伦科夫角与光子传输截面瘫痪。"
+                    ),
+                    violating_node_id=None,
+                    code_evidence="mpt->AddProperty(...)",
+                    remedy="在材料属性表中添加折射率：mpt->AddProperty(\"RINDEX\", photonEnergy, rindex, nEntries);",
+                ))
+
+    def _check_dose_mass_normalization(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """断言 13: 吸收剂量 (Gy) 累加必须除以介质质量 (PST-INV-SCALE-01)"""
+        raw_code = graph.attributes.get("raw_code", "")
+        if not raw_code:
+            return
+        bare = self._strip_comments(raw_code)
+        for line in bare.splitlines():
+            line_clean = line.strip()
+            if re.search(r'\b(?:dose|fDose|gDose)\w*\s*(?:=|\+=)\s*(.+?);', line_clean, re.I):
+                m = re.search(r'\b(?:dose|fDose|gDose)\w*\s*(?:=|\+=)\s*(.+?);', line_clean, re.I)
+                rhs = m.group(1).lower()
+                is_edep_accumulation = any(k in rhs for k in ["edep", "energydeposit", "totale", "ftotaledep"])
+                has_mass = any(k in rhs for k in ["mass", "rho", "density", "vol", "getmass", "kg", "g/cm3"]) and "/" in rhs
+                if is_edep_accumulation and not has_mass:
+                    violations.append(PSTViolation(
+                        rule_id="PST-INV-SCALE-01",
+                        domain=ConservationDomain.PHASE_SPACE,
+                        severity="CRITICAL",
+                        defect_name="吸收剂量计分缺失靶体积质量归一化 (Dose Missing Mass Denominator)",
+                        description=(
+                            "吸收剂量 (Gy = J/kg) 计算中直接累加能量沉积，未除以靶体积介质质量 (m = V * rho)。"
+                            "破坏量纲守恒不变式，宏观剂量数值被夸大千倍至百万倍。"
+                        ),
+                        violating_node_id=None,
+                        code_evidence=line_clean,
+                        remedy="将能量沉积除以靶介质质量：fDose += (edep / fMass);",
+                    ))
+                    break
+
+    def _check_run_lifecycle_initialization(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """断言 14: BeamOn 执行前必须完成 RunManager 初始化 (PHYS-INV-RUN-01)"""
+        raw_code = graph.attributes.get("raw_code", "")
+        if not raw_code:
+            return
+        bare = self._strip_comments(raw_code).lower()
+        has_beamon = "beamon(" in bare or "beamon (" in bare
+        has_init = "initialize()" in bare or "initialize ()" in bare
+        if has_beamon and not has_init:
+            violations.append(PSTViolation(
+                rule_id="PHYS-INV-RUN-01",
+                domain=ConservationDomain.LIFECYCLE,
+                severity="CRITICAL",
+                defect_name="运行管理器未初始化即调用束流发射 (Uninitialized BeamOn Execution)",
+                description=(
+                    "在调用 BeamOn(...) 之前未调用 runManager->Initialize()。"
+                    "几何探测器体、微观物理截面表与多线程内核尚未完成构造，"
+                    "会导致未初始化粒子输运、空指针崩溃或物理截面全部清零。"
+                ),
+                violating_node_id=None,
+                code_evidence="run->BeamOn(...)",
+                remedy="在 BeamOn 前调用 runManager->Initialize();",
+            ))
+
+    def _check_hadron_elastic_coupling(self, graph: PSTGraph, violations: List[PSTViolation]) -> None:
+        """断言 15: 中子深穿透与屏蔽模拟中非弹性散射必须耦合弹性散射 (PHYS-INV-HADRON-01)"""
+        raw_code = graph.attributes.get("raw_code", "")
+        if not raw_code:
+            return
+        bare = self._strip_comments(raw_code)
+        bare_lower = bare.lower()
+        _ELAS = re.compile(r"(?<!in)elastic", re.I)
+        has_hadron_inel = ("g4hadronphysics" in bare_lower or "inelastic" in bare_lower)
+        bare_without_hadron_phys = re.sub(r"g4hadronphysics\w+", "", bare_lower)
+        has_official = any(off.lower() in bare_without_hadron_phys for off in ["qgsp_bic_hp", "ftfp_bert", "ftfp_bert_hp", "qbbc", "shielding"])
+        is_neutron_scene = (
+            "neutron" in bare_lower
+            and any(k in bare_lower for k in ["concrete", "slab", "shield", "penetrat", "transmission", "穿透", "透射", "混凝土", "14 mev", "activation", "核素", "照射", "样品"])
+            and not any(k in bare_lower for k in ["maze", "slit"])
+        )
+        has_elastic_registered = bool(re.search(r'registerphysics\s*\(\s*new\s+g4hadronelastic', bare_lower))
+        if has_hadron_inel and not has_official and is_neutron_scene:
+            if not has_elastic_registered:
+                violations.append(PSTViolation(
+                    rule_id="PHYS-INV-HADRON-01",
+                    domain=ConservationDomain.NUCLEAR,
+                    severity="CRITICAL",
+                    defect_name="强子非弹性散射缺失弹性散射物理耦合 (Missing Hadron Elastic Coupling)",
+                    description=(
+                        "中子输运模拟中注册了强子非弹性散射物理过程，但缺失了强子弹性散射物理列表 (G4HadronElasticPhysics)。"
+                        "中子在慢化减速过程中将失去弹性碰撞能量损失机制，导致穿透通量与减速热化发生数百倍量级偏置。"
+                    ),
+                    violating_node_id=None,
+                    code_evidence="RegisterPhysics(new G4HadronPhysics...)",
+                    remedy="注册弹性散射模块：RegisterPhysics(new G4HadronElasticPhysicsHP());",
+                ))
 
     def _check_fair_game_weight(self, graph: PSTGraph, violations: List[PSTViolation], intent: Optional[PhysicsIntent] = None) -> None:
         """
@@ -185,24 +350,25 @@ class PSTVerifier:
                 else:
                     is_point_source = smp.attributes.get("is_point_source", False)
 
-                if smp.metric == "FixedPencilBeam" and is_point_source:
+                if smp.metric == "DegeneratePolarMeasure" or (smp.metric == "FixedPencilBeam" and is_point_source):
                     m_gun = re.search(r"(\w+(?:->|\.))\s*SetParticleMomentumDirection", smp.code_evidence)
                     gun_var = m_gun.group(1) if m_gun else ("gun." if "gun." in smp.code_evidence else "fGun->")
                     repl = f"{gun_var}SetParticleMomentumDirection(G4RandomDirection());"
+                    desc = (
+                        "PST 图分析表明：粒子发射动量抽样节点 [Direction] 的物理测度为线性极角抽样 [DegeneratePolarMeasure] 或固定单向平行笔束 [FixedPencilBeam]。"
+                        "在点放射源或 4π 各向同性探测实验中，动量发射必须在空间内按 dOmega = sin(theta) dtheta dphi 均匀分布。"
+                        "线性抽样极角 theta 或退化单向向量会导致两极粒子密度严重汇聚虚高或几何张角虚大，破坏相空间测度不变式。"
+                    )
                     violations.append(PSTViolation(
                         rule_id="PST-INV-MEASURE-01",
                         domain=ConservationDomain.PHASE_SPACE,
                         severity="CRITICAL",
-                        defect_name="点辐射源角分布退化为平行笔束 (Degenerate Pencil Beam)",
-                        description=(
-                            "PST 图分析表明：粒子发射动量抽样节点 [Direction] 的物理测度为 [FixedPencilBeam] (0,0,1)。"
-                            "在点放射源或 4π 各向同性探测实验中，动量发射必须在空间内按 dOmega = sin(theta) dtheta dphi 均匀分布。"
-                            "固定单向向量会导致探测器所张立体角被人为放大数十倍，峰效率超几何物理上限。"
-                        ),
+                        defect_name="辐射源立体角测度退化 (Degenerate Angular Measure)",
+                        description=desc,
                         violating_node_id=smp.node_id,
                         code_evidence=smp.code_evidence,
                         line_range=list(smp.line_range),
-                        remedy="改用 4pi 各向同性立体角抽样：gun->SetParticleMomentumDirection(G4RandomDirection());",
+                        remedy="改用 4pi 各向同性立体角抽样：gun->SetParticleMomentumDirection(G4RandomDirection()); 或 cosTheta = 2.0*G4UniformRand() - 1.0;",
                         proposed_replacement=repl,
                         diff=_build_simple_diff(smp.code_evidence, repl),
                     ))
@@ -213,8 +379,15 @@ class PSTVerifier:
         若读取了 LocalTrackLifetime (GetLocalTime)，粒子跨边界或产生次级时局域时钟清零，时序因果链断裂。
         """
         fetch_nodes = graph.find_nodes_by_action(PhysicalAction.FETCH)
-        is_tof = (intent and (intent.timing_clock == TimingClock.GLOBAL_LAB_CLOCK or intent.observable == ObservableType.TIME_OF_FLIGHT)) or any(n.quantity == "TimeOfFlightTally" for n in graph.nodes) or ("tof" in graph.source_file.lower())
+        is_tof_declared = (intent and (intent.timing_clock == TimingClock.GLOBAL_LAB_CLOCK or intent.observable == ObservableType.TIME_OF_FLIGHT)) or any(n.quantity == "TimeOfFlightTally" for n in graph.nodes)
+        raw_c = graph.attributes.get("raw_code", "")
         for fn in fetch_nodes:
+            is_tof = (
+                is_tof_declared
+                or any(k in fn.code_evidence.lower() for k in ("tof", "flight", "time_of_flight"))
+                or any(k in fn.code_evidence for k in ("/ ns", "/ ps", "/ us", "/ s", "/ ms", "Fill("))
+                or (any(k in raw_c for k in ["/ ns", "/ ps", "/ us"]) and "GetLocalTime" in fn.code_evidence)
+            )
             if (fn.quantity == "LocalTrackTime" or fn.metric == "LocalTrackLifetime") and is_tof:
                 repl = fn.code_evidence.replace("GetLocalTime()", "GetGlobalTime()")
                 violations.append(PSTViolation(
@@ -383,7 +556,7 @@ class PSTVerifier:
             tier = acc.scope_context.get("lifecycle_tier", "")
             lhs = acc.attributes.get("lhs", "")
             # 若是在 EventAction 中累加，或被标记为跨文件事件级累加
-            is_event_acc = (tier == "Event") or any(k in lhs.lower() for k in ("eventedep", "totalevent", "fevent"))
+            is_event_acc = (tier == "Event") or any(k in lhs.lower() for k in ("eventedep", "totalevent", "fevent", "totaledep", "ftotaledep"))
             if is_event_acc or acc.attributes.get("missing_event_reset"):
                 var_key = lhs.split("->")[-1].strip().lower()
                 has_reset = any(var_key in rv or rv in var_key for rv in reset_vars if rv) or any(

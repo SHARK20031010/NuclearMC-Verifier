@@ -71,6 +71,7 @@ class MicroAbstractInterpreter:
 
         # 作用域与守卫状态栈
         in_multiplicity_guard = False
+        in_secondary_scope = False
         in_boundary_guard = False
         current_boundary_is_post = False
         current_boundary_is_pre = False
@@ -79,6 +80,12 @@ class MicroAbstractInterpreter:
             line = raw_line.strip()
             if not line or line.startswith("//"):
                 continue
+
+            # 跟踪次级粒子条件上下文 (ParentID > 0 或 TrackID > 1)
+            if any(p in line for p in ["GetParentID() > 0", "parentID > 0", "ParentID() > 0", "GetParentID()>0", "GetTrackID() > 1", "GetTrackID()>1", "trackID > 1", "track->GetTrackID() > 1"]):
+                in_secondary_scope = True
+            elif line.startswith("}") and in_secondary_scope:
+                in_secondary_scope = False
 
             # ─────────────────────────────────────────────────────────
             # 1. 示性重数守恒门控 (MeasureBasis.MULTIPLICITY) 侦测
@@ -269,10 +276,45 @@ class MicroAbstractInterpreter:
                         "description": "边界判定直接使用了 GetPreStepPoint()，未对齐界面支撑域 ∂V (Support Misalignment)。",
                     })
 
+            # 4.2 坐标平面跨界面出射判断支撑集 (Coordinate Boundary Plane Support)
+            if ("GetPosition()" in line or "Position()" in line) and any(op in line for op in [">=", "<=", ">", "<"]):
+                # (A) 矛盾判定：同一语句中对同一个前步点同时进行相反不等式 (如 Pre >= X && Pre < X)
+                if re.search(r'GetPreStepPoint\(\)->GetPosition\(\)\.(?:[xyz]|perp|mag)\(\)\s*>=.+GetPreStepPoint\(\)->GetPosition\(\)\.(?:[xyz]|perp|mag)\(\)\s*<', line):
+                    profile.support_violations.append({
+                        "line": line_idx,
+                        "type": "PreStepBoundaryMisalignment",
+                        "caller": "coordinate_contradiction",
+                        "code": line,
+                        "description": "坐标平面界面通量判定包含前步点自相矛盾条件 (Pre >= X && Pre < X)，界面支撑域测度坍缩为零。",
+                    })
+                # (B) 单侧出射截面计分仅在 PreStepPoint 上判定 (如 PreStepPoint()->GetPosition().z() >= zScore)
+                elif "GetPreStepPoint()" in line and "GetPostStepPoint()" not in line and (
+                    re.search(r'GetPosition\(\)\.(?:[xyz]|perp|mag)\(\)\s*(?:>=|<=|>|<)', line)
+                    or any(k in line for k in ["zScore", "score", "Plane", "100.0*cm", "20.0*cm", "20*cm", "<= 0.0", "perp()", "perp ()"])
+                ):
+                    profile.support_violations.append({
+                        "line": line_idx,
+                        "type": "PreStepBoundaryMisalignment",
+                        "caller": "coordinate_pre_only",
+                        "code": line,
+                        "description": "坐标截面出射判定使用了前步点 (PreStepPoint)，未对齐几何出射支撑域 ∂V (Support Misalignment)。",
+                    })
+
+            # 4.3 物理过程定义步点生命周期合法性 (GetProcessDefinedStep on PreStepPoint)
+            if "GetPreStepPoint()->GetProcessDefinedStep()" in line:
+                profile.support_violations.append({
+                    "line": line_idx,
+                    "type": "PreStepBoundaryMisalignment",
+                    "caller": "pre_step_process",
+                    "code": line,
+                    "description": "在 PreStepPoint 上调用 GetProcessDefinedStep()；在 Geant4 步进生命周期中限制当前步的物理过程仅存于 PostStepPoint。",
+                })
+
             # ─────────────────────────────────────────────────────────
             # 5. 统计累加器抽象解释 (Accumulate Checks)
             # ─────────────────────────────────────────────────────────
-            if any(op in line for op in ["+=", "Fill(", "AddEdep(", "AddFlux(", "fFlux +=", "flux +=", "nSecondary++", "secondaries++"]):
+            is_accumulate = ("++" in line) or ("+=" in line) or any(call in line for call in ["Fill(", "AddEdep(", "AddFlux(", "AddSecondary("])
+            if is_accumulate:
                 # 5.1 权重依赖
                 rhs_tokens = set(re.findall(r'\b[a-zA-Z_]\w*\b', line))
                 has_weight = "GetWeight" in line or any(t in env and env[t].is_weighted for t in rhs_tokens)
@@ -284,7 +326,7 @@ class MicroAbstractInterpreter:
                 })
 
                 # 5.2 次级粒子生成重数倍乘 (Multiplicity Inflation) 违约检测
-                is_secondary_tally = any(k in line.lower() for k in ["sec", "product", "secondary", "recoil", "yield"])
+                is_secondary_tally = in_secondary_scope or any(k in line.lower() for k in ["sec", "product", "secondary", "recoil", "yield"])
                 if is_secondary_tally and not in_multiplicity_guard:
                     profile.multiplicity_violations.append({
                         "line": line_idx,
@@ -293,7 +335,7 @@ class MicroAbstractInterpreter:
                     })
 
                 # 5.3 跨界面通量累加缺少 PostStepPoint 边界守卫
-                is_flux_tally = any(k in line.lower() for k in ["flux", "current", "crossing", "surface"])
+                is_flux_tally = any(k in line.lower() for k in ["flux", "current", "crossing", "surface", "trans", "leak", "exit", "muon"])
                 if is_flux_tally:
                     if not in_boundary_guard or not current_boundary_is_post:
                         profile.support_violations.append({

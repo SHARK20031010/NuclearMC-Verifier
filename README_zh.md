@@ -65,12 +65,42 @@ $ ./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_bu
              if (track->GetCurrentStepNumber() == 1) { /* 仅在诞生首步记录顶点与统计产额 */ }
 ```
 
+### 🏗️ 确定性核验处理管道架构
+
+```mermaid
+flowchart TD
+    subgraph Input["📥 输入仿真源码与规约"]
+        G4["Geant4 C++ 源码\n(单文件或多文件 CMake 复杂工程)"]
+        SPEC["前置物理规约契约\n(观测量、几何测度、源相空间、归一化基准)"]
+    end
+
+    subgraph Pipeline["⚡ 确定性静态分析管道 (&lt; 10 ms)"]
+        L1["1. Tree-sitter AST & CMake 多文件解析器\n跨源文件符号解析与后序遍历"]
+        L2["2. 微观抽象解释器 (Abstract Interpreter)\n• 指针别名追踪与权重布尔代数流动\n• 过程循环公式求值展开 (柯西色散/Sellmeier)\n• 外部数据文件 (.csv/.dat) 智能探测加载"]
+        L3["3. 物理语义树 (PST) 中间表示构建\n五动作 × 31 槽位规范化物理算子图"]
+        L4["4. 正交守恒断言核验引擎\n• 6 大物理守恒总线\n• 四维测度代数完备基 (S, M, F, T)"]
+    end
+
+    subgraph Output["📤 判定与诊断输出"]
+        PASS["✅ PASS: 结构性无偏守恒\n(0ms 运行期开销)"]
+        BLOCK["🚨 BLOCKED: 形式化违约硬阻断\n精准物理归因诊断 + 靶向代码修复补丁"]
+        INSPECT["📋 全景物理实参透视看板\n(几何拓扑、探测器角色、物性曲线、计分响应)"]
+    end
+
+    Input --> L1 --> L2 --> L3 --> L4
+    L4 -->|物理自洽| PASS
+    L4 -->|检测到违约| BLOCK
+    L3 -.-> INSPECT
+```
+
 ---
 
 ## ✨ 核心特性
 
 - ⚡ **毫秒级纯 AST 静态解析**：无需安装或编译数十 GB 的 Geant4 C++ 运行环境，纯 AST 与第一性原理规则驱动，单文件核验耗时 **< 10ms**。
 - 🛡️ **6 大正交物理防护总线**：全面覆盖因果时钟、相空间立体角测度、方差缩减权重流、步进微生命周期、核素衰变数据库以及前置输入意图契约。
+- 📐 **四维测度代数完备基约束**：严密核验离散相空间积分的测度支撑集 ($\mathcal{S}$)、示性测度重度 ($\mathcal{M}$)、乘积测度纤维化 ($\mathcal{F}$) 与鞅因果时序 ($\mathcal{T}$)。
+- 🔍 **泛用型物理实参显式提取**：能够符号展开并安全计算 `for` 循环中的动态公式（如柯西色散、Sellmeier）、探测读取外部 `.csv/.dat` 数据流、识别探测器组件角色，并交叉核验热中子晶格散射核 $S(\alpha, \beta)$。
 - 🔌 **5 大 Agent 平台原生适配**：开箱即用支持 **Google Antigravity**、**DeepSeek Harness (DSH)**、**Anthropic Claude Code**、**OpenCode** 及标准 **MCP (Model Context Protocol)**。
 - 🎯 **五动作 × 31 槽位闭环分类学**：将蒙卡物理数据流解构为「定、抽、取、记、换」五个基础算子，彻底封死常数伪拟合空间。
 - 🧪 **190 题完整评测基准套件**：涵盖屏蔽、剂量、活化、探测器、微剂量、束流源项 6 大物理领域，提供完整任务、提示词与三组对照源码。
@@ -96,6 +126,9 @@ pip install -r requirements.txt
 # 检查单文件 Geant4 C++ 源码
 ./mc-verifier check path/to/your_simulation.cc
 
+# 物理实参透视 (直接扒出几何体、介质物性曲线、辐射源与计分全景)
+./mc-verifier inspect path/to/your_simulation.cc
+
 # 快速体验：检查基准库中的合规代码 (输出：底层契约核验通过)
 ./mc-verifier check benchmark_tasks_reference/tier1_single_slot/T1-1/code/code_ArmA.cc
 
@@ -112,10 +145,56 @@ pip install -r requirements.txt
 | 命令 | 说明 |
 | :--- | :--- |
 | `./mc-verifier check <文件>` | 对指定的 Geant4 C++ 代码执行静态物理守恒核验 |
+| `./mc-verifier inspect <文件>` | **实参透视看板**：毫秒级提取几何实体、物性曲线、粒子源项与计分统计 |
+| `./mc-verifier check-pst <文件>` | **PST 形式化核验**：构建物理语义树 (PST) 中间表示并断言测度不变式 |
+| `./mc-verifier eval-pst` | 批量运行 PST 物理基准评测套件 (统计精确率、召回率与平均延迟) |
 | `./mc-verifier on` | **开启门禁**：在所有集成的 Agent 平台中激活刚性物理守恒阻断 |
 | `./mc-verifier off` | **关闭门禁**：所有 Agent 进入严格 0ms No-Op 直通放行模式 |
 | `./mc-verifier status` | 查看当前核验启闭状态与 5 大 Harness 就绪看板 |
 | `./mc-verifier install-all` | 一键向本地全部 Agent 平台自动注册技能与适配器 |
+
+### 📋 物理实参全景透视演示 (`./mc-verifier inspect`)
+
+无需安装或编译 Geant4，运行 `./mc-verifier inspect` 在 7 毫秒内透视仿真程序的底层物理构成：
+
+```text
+$ ./mc-verifier inspect benchmarks/code_C/T4-3/code.cc
+
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  📋 蒙特卡罗仿真输入参数显式清单 (Code Parameter Manifest)                     │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  目标路径: benchmarks/code_C/T4-3/code.cc                         [7.34 ms]      │
+│  工程架构: 单文件 C++ 编译单元                                                   │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [1. 辐射源项参数 (Radiation Source)]                                             │
+│    • 初级能量: 1.0 * MeV                 事件历史: 1                             │
+│    • 发射位置: {0, 0, -5 * cm}           动量向量: {0, 0, 1}                     │
+│    • 角分布测度: 单向平行束 (Pencil Beam: {0, 0, 1})                             │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [2. 几何拓扑与探测器构件 (Geometry & Detector Modeling)]                          │
+│    • world     [G4Box] 介质: G4_AIR       角色: World 容器 (World Container)     │
+│      └─ 尺寸: half_x=20*cm, half_y=20*cm, half_z=20*cm                           │
+│    • sc        [G4Box] 介质: PlasticScint 角色: 灵敏探测晶体 (Active Crystal)    │
+│      └─ 尺寸: half_x=2.5*cm, half_y=2.5*cm, half_z=2.5*cm                        │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [3. 介质连续物性数组曲线 f(E) (Continuous Property Curves)]                       │
+│    • PlasticScint -> RINDEX                (N=10) [单调递增 · 合规]              │
+│      └─ 自变量: [1.50, 6.00] eV   取值: [1.33, 1.36]  来源: 动态循环公式生成     │
+│    • PlasticScint -> SCINTILLATIONCOMPONENT1 (N=2) [单调递增 · 合规]              │
+│      └─ 自变量: [1.00, 6.00] eV   取值: [1.00, 1.00]  来源: 源码声明式数组       │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [5. 物理列表与微观模型 (Physics List & Nuclear Models)]                           │
+│    • 主物理列表: ModularPhysicsList       附加模块: G4OpticalPhysics             │
+│    • Birks 猝灭常数: 0.126 * mm / MeV                                            │
+│    • 物理特性: 光学光子全物理过程 (G4OpticalPhysics), 连续能高精度中子库 (HP)    │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [6. 计分响应与统计量 (Tally & Scoring)]                                          │
+│    • 径迹长度中子通量 TLE: `realfluxContribution` [权重保留: 正常使能]           │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  [7. 运行控制与减方差 (Run Control)]                                               │
+│    • 运行引擎: G4RunManager (单线程)      减方差: 无偏直抽样 (Analog)            │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### 配置文件 (`.mc-verifier.yaml`)
 
@@ -149,6 +228,54 @@ invariants:
 | ⏱️ **因果与时钟总线** | `causality_core.py` | **宏观实验时钟 $\rightarrow$ 全局实验室时间 $\rightarrow$ 粒子局域寿命 $\rightarrow$ 延迟符合时序窗**<br>• 严格维护输运过程的相对论因果律：全局绝对时钟 (`GetGlobalTime`) 与局域寿命 (`GetLocalTime`) 显式隔离、飞行时间 (TOF) 保持单调递增因果链、双探头符合测量窗时序判定、脉冲束流与回路流体停留时间标定。 |
 | 🔄 **步进生命周期总线** | `lifecycle_core.py` | **径迹诞生 $\rightarrow$ 微步推进 $\rightarrow$ 界面穿越判定 $\rightarrow$ 敏感区信号解耦 $\rightarrow$ 容器生命周期重置**<br>• 跟踪 Monte Carlo 步进微态机转换：次级粒子产生严格首步过滤 (`GetCurrentStepNumber() == 1`)、过程溯源优先使用 `GetCreatorProcess`、跨界面依据 `PostStepPoint` 状态判定、死层能量隔离、Event 级累加容器生命周期隔离。 |
 | ⚖️ **权重流与方差总线** | `variance_core.py` | **真实输运测度 $\rightarrow$ 重要性分裂/轮盘赌偏置 $\rightarrow$ 统计权重动态补偿 $\rightarrow$ 无偏估计**<br>• 坚守“公平游戏（Fair-Game）”无偏输运测度：深穿透几何重要性分裂（Splitting）或权重窗（Weight Window）后，每个分裂粒子的统计权重 $w$ 动态缩减，计分器累加必须严格乘入权重流 $\sum (x_i \cdot w_i)$，严禁权重流断链。 |
+
+---
+
+## 🎯 五动作 × 31 槽位闭环分类学 (5-Action × 31-Slot Taxonomy)
+
+我们将蒙卡离散输运过程中的所有物理行为，严格正交解构为「定、抽、取、记、换」五个基础算子，并覆盖 31 个精细物理槽位：
+
+<div align="center">
+  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="五动作与31槽位分布">
+  <p><i>图 2：31 个微观物理槽位在五大经典输运动作（Define、Sample、Fetch、Accumulate、Convert）上的分布拓扑，构建闭环无参数拟合防护。</i></p>
+</div>
+
+| 规范动作算子 | 物理语义职责 | 典型核验物理槽位 |
+| :--- | :--- | :--- |
+| **`Define` (定)** | 静态相空间与物性结构构建 | 几何实体、探测器组件角色（容器/灵敏晶体/死层）、多能点连续物性曲线 $f(E)$、热中子晶格散射核 $S(\alpha, \beta)$ 绑定、物理列表过程注册 |
+| **`Sample` (抽)** | 随机变量产生与相空间测度抽样 | 4π 球面度立体角测度 $d\Omega = \sin\theta d\theta d\phi$、极坐标面源径向面密度 $r = R\sqrt{\xi}$、连续能谱非负截断、脉冲时间抽样 |
+| **`Fetch` (取)** | 碰撞前运动学状态与因果流提取 | 相互作用前初态动能提取（满足鞅流因果律 $\mathcal{F}_t$）、局域寿命与全局绝对时钟解耦、次级粒子产生过程标识 |
+| **`Accumulate` (记)** | 相空间积分与计分累加 | 径迹长度通量 TLE（$\sum w \ell / V$）、界面出射流、灵敏区能量沉积、公平博弈权重保留（$w \cdot x$）、次级产生单步单射保护 |
+| **`Convert` (换)** | 响应标度与物理量纲归一化 | 吸收剂量转换（Gy = J/kg）、FWHM 高斯能量展宽、活度单位换算（Bq 与 Ci）、每初级源粒子/束流强归一化分母 |
+
+---
+
+## 📐 四维测度代数完备基与时序公理 (Measure-Theoretic Four-Basis)
+
+蒙卡模拟本质是对相空间乘积测度空间的离散估计 $I = \int_{\Omega} f \, d\mu$。统计无偏性（$\mathbb{E}[\hat{I}] = I$）在控制流上必须严格满足以下**四维测度代数完备基**：
+
+```mermaid
+graph LR
+    S["1. 支撑集不变式 (S · 条件槽位)<br>• 跨界面通量支撑域严格限定于边界 dV<br>• 必须使用 PostStepPoint 判定"]
+    M["2. 重度不变式 (M · 次数槽位)<br>• 单粒子轨迹示性测度严禁虚假倍乘<br>• 次级产生首步过滤 GetCurrentStepNumber() == 1"]
+    F["3. 纤维化重置不变式 (F · 层级槽位)<br>• 乘积测度空间 Omega_Event x Omega_Run 隔离<br>• 事件级统计容器跨事件残留消除"]
+    T["4. 鞅时序因果不变式 (T · 顺序槽位)<br>• 物理量关于随机自然时序流 F_t 取值先于碰撞更新<br>• 严禁碰撞后抓初态动能"]
+
+    S --> M --> F --> T
+```
+
+1. **测度支撑集不变式 ($\mathcal{S}$ · 条件槽位)**：
+   - 跨界面通量与界面粒子积分，其测度支撑域必须严格限制在几何界面 $\partial V$；
+   - 必须使用后步点（`PostStepPoint`）状态判定；严禁将体内部步进误判为边界支撑集。
+2. **示性测度重度不变式 ($\mathcal{M}$ · 次数槽位)**：
+   - 单粒子轨迹上示性测度严禁虚假倍乘膨胀；
+   - 次级粒子产生位置或生成产额计分，必须显式满足单步单射条件（如 `GetCurrentStepNumber() == 1`）或集合去重（`insert(trackID)`），严禁沿径迹在后续数百个步进中重复触发。
+3. **乘积测度纤维化重置不变式 ($\mathcal{F}$ · 层级槽位)**：
+   - 乘积测度空间 $\Omega_{\text{Event}} \times \Omega_{\text{Run}}$ 必须严格满足有限生命周期自动机分层隔离；
+   - 事件级统计容器在进入新事件时必须严格清零，严禁跨事件残留污染 (Inter-Event Stale Tally Accumulation)。
+4. **鞅信息流因果时序不变式 ($\mathcal{T}$ · 顺序槽位)**：
+   - 物理观测量关于随机自然时序流 $\mathcal{F}_t$ 的取值必须先于状态更新与相互作用；
+   - 严禁相互作用后获取初态能量，避免系统性负偏倚。
 
 ---
 

@@ -143,7 +143,7 @@ class MockTopologyRunner:
         # auto* logic = new G4LogicalVolume(solid, mat, "TargetLogical");
         var_to_logname: Dict[str, str] = {}
         log_decl_pattern = re.compile(
-            r'(?:auto|G4LogicalVolume)\s*[\*&]?\s*([a-zA-Z_]\w*)\s*=\s*new\s+G4LogicalVolume\s*\(\s*([^,]+),\s*([^,]+),\s*["\']([^"\']+)["\']'
+            r'(?:auto|G4LogicalVolume)\s*[\*&]?\s*([a-zA-Z_]\w*)\s*=\s*new\s+G4LogicalVolume\s*\(\s*(.+?),\s*([a-zA-Z_]\w*),\s*["\']([^"\']+)["\']'
         )
         for m in log_decl_pattern.finditer(code):
             var_name = m.group(1).strip()
