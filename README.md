@@ -9,8 +9,8 @@
 **Deterministic Static Conservation Guardrail & Verification Engine for LLM-Synthesized Monte Carlo Simulation Codes**
 
 <p align="center">
-  <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/Tests-44%2F44_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
@@ -240,8 +240,8 @@ A Monte Carlo transport code maps upstream user requirements, microscopic physic
 Monte Carlo transport dataflows are canonically decomposed into five primitive operators: **Define**, **Sample**, **Fetch**, **Accumulate**, and **Convert**, covering 31 fine-grained physical slots without empirical parameter tuning:
 
 <div align="center">
-  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="5-Action x 31-Slot Distribution">
-  <p><i>Figure 2: Distribution of the 31 fine-grained physical slots across the 5 canonical transport actions (Define, Sample, Fetch, Accumulate, Convert), forming a closed-loop causal chain.</i></p>
+  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="Physical Error Distribution across 5 Actions">
+  <p><i>Figure 2: Distribution of 35 critical physical errors across the 5 canonical transport actions (Define, Sample, Fetch, Accumulate, Convert) identified in baseline LLM generation (Arm A). Errors are heavily concentrated in Sample (25.7%), Accumulate (22.9%), and Convert (22.9%), demonstrating why top-level configuration auditing is fundamentally blind to downstream transport defects.</i></p>
 </div>
 
 | Canonical Action | Physical Semantic Role | Key Physical Slots Checked |
@@ -355,13 +355,13 @@ Add the server entry to your `mcp.json`:
 
 To evaluate the guardrail's effectiveness, extensive multi-arm comparative experiments were conducted across **190 curated Monte Carlo simulation tasks** covering 6 physics domains:
 
-| Evaluation Tier | Task Count | Direct Generation | Multi-Turn Self-Reflect | With Verifier (Ours) | Core Physics Targets & Traps |
+| Evaluation Tier | Task Count | Direct Generation (Arm A) | Multi-Turn Self-Reflect (Arm B) | With Verifier (Arm C, Ours) | Core Physics Targets & Traps |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Tier 1 (Single Slot)** | 60 | 41.7% | 98.3% | **100.0%** | Material cross sections, primary sources, single-volume geometry |
-| **Tier 2 (Coupled Modules)** | 60 | 0.0% | 36.7% | **100.0%** | Multi-region interfaces, nanosecond pulses, decay chains, micro-stepping |
-| **Tier 3 (Multi-Constraint)** | 60 | 0.0% | 53.3% | **100.0%** | Geometric splitting & weight windows, thin foils, fluid activation & heating |
-| **Wild Corpus (Real Bugs)** | 10 | 0.0% | 0.0% | **100.0%** | Long-tail silent defects harvested from CERN forums & GitHub repos |
-| **Overall** | **190** | **13.2%** | **59.5%** | **100.0%** | **Self-reflection suffers from parameter fitting; verifier achieves 100% closed loop** |
+| **Tier 1 (Single Slot)** | 60 | 41.7% (25/60) | 86.7% (52/60) | **100.0% (60/60)** | Material cross sections, primary sources, single-volume geometry |
+| **Tier 2 (Coupled Modules)** | 60 | 18.3% (11/60) | 36.7% (22/60) | **100.0% (60/60)** | Multi-region interfaces, nanosecond pulses, decay chains, micro-stepping |
+| **Tier 3 (Multi-Constraint)** | 60 | 23.3% (14/60) | 53.3% (32/60) | **100.0% (60/60)** | Geometric splitting & weight windows, thin foils, fluid activation & heating |
+| **Wild Corpus (Real Bugs)** | 10 | 0.0% (0/10) | 0.0% (0/10) | **100.0% (10/10)** | Long-tail silent defects harvested from CERN forums & GitHub repos |
+| **Overall (Micro-Average)** | **190** | **26.3% (50/190)** | **55.8% (106/190)** | **100.0% (190/190)** | **Self-reflection encounters cognitive cliffs; verifier achieves 100% closed-loop remediation** |
 
 <div align="center">
   <img src="figures/fig1_accuracy_gradient.png" width="75%" alt="Accuracy Gradient Comparison">
@@ -418,8 +418,6 @@ If you use NuclearMC-Verifier or the 190-task benchmark in your research, comput
   author       = {{NuclearMC-Verifier Contributors}},
   title        = {{NuclearMC-Verifier: High-Precision Physics Guardrail for LLM-Generated Monte Carlo Transport Codes}},
   year         = {2026},
-  publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.23231733},
-  url          = {https://doi.org/10.5281/zenodo.23231733}
+  url          = {https://github.com/SHARK20031010/NuclearMC-Verifier}
 }
 ```

@@ -1,7 +1,7 @@
 {
   "task_id": "T3-1",
   "name": "Ground-truth PST specification for T3-1",
-  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T3-1/code.cc",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T3-1/code/code_ArmA.cc",
   "nodes": [
     {
       "node_id": "node_01_define",

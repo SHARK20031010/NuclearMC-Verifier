@@ -1,7 +1,7 @@
 {
   "task_id": "T3-2",
   "name": "Ground-truth PST specification for T3-2",
-  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/code/T3-2/code.cc",
+  "source_file": "benchmark_tasks_reference/tier1_single_slot/T3-2/code/code_ArmA.cc",
   "nodes": [
     {
       "node_id": "node_01_define",
@@ -80,7 +80,7 @@
       "physical_quantity": "normalization_scale",
       "conservation_domain": "dimension_linearity",
       "expected_invariant": "per_primaries_or_becquerel_normalization",
-      "code_evidence": "run->GetNumberOfEvent(), \"Z-A\", \"\u751f\u6210\u4e2a\u6570\");",
+      "code_evidence": "run->GetNumberOfEvent(), \"Z-A\", \"生成个数\");",
       "confidence": 1.0
     },
     {

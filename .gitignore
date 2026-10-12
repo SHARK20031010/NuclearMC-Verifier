@@ -83,10 +83,11 @@ Thumbs.db
 # Private research manuscripts and internal schemes
 paper_manuscript.md
 AI蒙卡程序物理正确率与防错体系_综合总案.md
+sim-indie-dev-scale-research.md
 
 # Intermediate experiment and dump directories
 g4dump/
 verify/
 测量方案/
-benchmarks/
-!benchmarks/eval_pst.py
+benchmarks
+

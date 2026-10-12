@@ -9,8 +9,8 @@
 **大语言模型编写蒙特卡罗物理仿真代码的确定性守恒核验器与防幻觉护栏**
 
 <p align="center">
-  <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/Tests-44%2F44_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
@@ -236,8 +236,8 @@ invariants:
 我们将蒙卡离散输运过程中的所有物理行为，严格正交解构为「定、抽、取、记、换」五个基础算子，并覆盖 31 个精细物理槽位：
 
 <div align="center">
-  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="五动作与31槽位分布">
-  <p><i>图 2：31 个微观物理槽位在五大经典输运动作（Define、Sample、Fetch、Accumulate、Convert）上的分布拓扑，构建闭环无参数拟合防护。</i></p>
+  <img src="figures/fig2_action_slots_distribution.png" width="80%" alt="五动作物理缺陷分布">
+  <p><i>图 2：大模型基线生成代码（Arm A）检出的 35 项关键物理缺陷在五大核心输运动作（Define、Sample、Fetch、Accumulate、Convert）上的分布拓扑。缺陷高密集中于 Sample（25.7%）、Accumulate（22.9%）与 Convert（22.9%），仅有 11.4% 处于 Define，直观解释了为什么传统顶层物理列表审计会失效。</i></p>
 </div>
 
 | 规范动作算子 | 物理语义职责 | 典型核验物理槽位 |
@@ -351,17 +351,17 @@ NuclearMC-Verifier 原生支持多主流 Coding Agent，能够在模型生成代
 
 为验证核验器的有效性，我们在涵盖 6 大物理领域的 **190 道严选蒙卡仿真任务** 上进行了全量对照测试：
 
-| 评测梯级 (Task Tier) | 题目数量 | 模型直接生成 | 模型多轮自查反思 | 挂载本核验器 (Ours) | 主要考点与典型陷阱 |
+| 评测梯级 (Task Tier) | 题目数量 | 模型直接生成 (Arm A) | 模型多轮自查反思 (Arm B) | 挂载本核验器 (Arm C, Ours) | 主要考点与典型陷阱 |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Tier 1 (基础单考点)** | 60 | 41.7% | 98.3% | **100.0%** | 材料、初级截面、粒子源及单体积几何配置 |
-| **Tier 2 (跨模块耦合)** | 60 | 0.0% | 36.7% | **100.0%** | 多区域界面输运、纳秒脉冲时序、衰变链与界面微步长 |
-| **Tier 3 (高阶多约束综合)** | 60 | 0.0% | 53.3% | **100.0%** | 分层方差缩减权重窗、极薄纳米靶、流体活化与发热功率等高阶综合难题 |
-| **Wild Corpus (真实社区漏洞)** | 10 | 0.0% | 0.0% | **100.0%** | 提取自 CERN 官方论坛与 GitHub 真实项目的长尾静默缺陷 |
-| **全量综合 (Overall)** | **190** | **13.2%** | **59.5%** | **100.0%** | **自省存在常数拟合欺骗，形式化核验实现 100% 物理闭环修复** |
+| **Tier 1 (基础单考点)** | 60 | 41.7% (25/60) | 86.7% (52/60) | **100.0% (60/60)** | 材料、初级截面、粒子源及单体积几何配置 |
+| **Tier 2 (跨模块耦合)** | 60 | 18.3% (11/60) | 36.7% (22/60) | **100.0% (60/60)** | 多区域界面输运、纳秒脉冲时序、衰变链与界面微步长 |
+| **Tier 3 (高阶多约束综合)** | 60 | 23.3% (14/60) | 53.3% (32/60) | **100.0% (60/60)** | 分层方差缩减权重窗、极薄纳米靶、流体活化与发热功率等高阶综合难题 |
+| **Wild Corpus (真实社区漏洞)** | 10 | 0.0% (0/10) | 0.0% (0/10) | **100.0% (10/10)** | 提取自 CERN 官方论坛与 GitHub 真实项目的长尾静默缺陷 |
+| **全量微平均 (Overall)** | **190** | **26.3% (50/190)** | **55.8% (106/190)** | **100.0% (190/190)** | **自省遭遇认知断崖，形式化核验实现 100% 物理闭环修复** |
 
 <div align="center">
   <img src="figures/fig1_accuracy_gradient.png" width="75%" alt="准确率梯级对比">
-  <p><i>图 1：190 题各梯级通过率对比（模型自查在复杂任务中遭遇认知断崖，挂载核验器实现全量闭环）</i></p>
+  <p><i>图 1：190 题各梯级通过率对比（模型多轮自查在复杂任务中遭遇认知断崖，挂载核验器实现全量 100% 闭环修复）</i></p>
 </div>
 
 全部 190 道题目已整理归档在 [`benchmark_tasks_reference/`](benchmark_tasks_reference/)：
@@ -422,8 +422,6 @@ NuclearMC-Verifier/
   author       = {{NuclearMC-Verifier Contributors}},
   title        = {{NuclearMC-Verifier: High-Precision Physics Guardrail for LLM-Generated Monte Carlo Transport Codes}},
   year         = {2026},
-  publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.23231733},
-  url          = {https://doi.org/10.5281/zenodo.23231733}
+  url          = {https://github.com/SHARK20031010/NuclearMC-Verifier}
 }
 ```

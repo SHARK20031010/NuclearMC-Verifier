@@ -1,7 +1,7 @@
 {
   "task_id": "WILD-01",
   "name": "Ground-truth PST specification for WILD-01",
-  "source_file": "/home/shark/\u80e1\u601d\u4e71\u60f3/1/benchmarks/real_world_wild_corpus/cases/WILD-01_buggy.cc",
+  "source_file": "benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc",
   "nodes": [
     {
       "node_id": "node_01_define",

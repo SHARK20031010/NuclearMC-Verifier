@@ -46,12 +46,14 @@ def test_golden_pst_30_sample_regression():
     pipeline = PSTPipeline()
 
     sample_file = anno_dir / "wild_01.json"
-    assert sample_file.exists()
-
     with open(sample_file, "r", encoding="utf-8") as f:
         gt_data = json.load(f)
 
-    with open(gt_data["source_file"], "r", encoding="utf-8") as f:
+    src_path = Path(gt_data.get("source_file", ""))
+    if not src_path.exists():
+        src_path = Path(__file__).resolve().parent.parent / "benchmark_tasks_reference" / "wild_corpus" / "WILD-01" / "code" / "case_buggy.cc"
+
+    with open(src_path, "r", encoding="utf-8") as f:
         code_text = f.read()
 
     pst, _ = pipeline.run_code(code_text, filename="WILD-01_buggy.cc")
