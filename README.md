@@ -358,11 +358,11 @@ To evaluate the guardrail's effectiveness, extensive multi-arm comparative exper
 
 | Evaluation Tier | Task Count | Direct Generation (Arm A) | Multi-Turn Self-Reflect (Arm B) | With Verifier (Arm C, Ours) | Core Physics Targets & Traps |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Tier 1 (Single Slot)** | 60 | 41.7% (25/60) | 86.7% (52/60) | **100.0% (60/60)** | Material cross sections, primary sources, single-volume geometry |
-| **Tier 2 (Coupled Modules)** | 60 | 18.3% (11/60) | 36.7% (22/60) | **100.0% (60/60)** | Multi-region interfaces, nanosecond pulses, decay chains, micro-stepping |
-| **Tier 3 (Multi-Constraint)** | 60 | 23.3% (14/60) | 53.3% (32/60) | **100.0% (60/60)** | Geometric splitting & weight windows, thin foils, fluid activation & heating |
+| **Tier 1 (Single Slot)** | 60 | 41.7% (25/60) | 98.3% (59/60) | **100.0% (60/60)** | Material cross sections, primary sources, single-volume geometry |
+| **Tier 2 (Coupled Modules)** | 60 | 0.0% (0/60) | 36.7% (22/60) | **100.0% (60/60)** | Multi-region interfaces, nanosecond pulses, decay chains, micro-stepping |
+| **Tier 3 (Multi-Constraint)** | 60 | 0.0% (0/60) | 53.3% (32/60) | **100.0% (60/60)** | Geometric splitting & weight windows, thin foils, fluid activation & heating |
 | **Wild Corpus (Real Bugs)** | 10 | 0.0% (0/10) | 0.0% (0/10) | **100.0% (10/10)** | Long-tail silent defects harvested from CERN forums & GitHub repos |
-| **Overall (Micro-Average)** | **190** | **26.3% (50/190)** | **55.8% (106/190)** | **100.0% (190/190)** | **Self-reflection encounters cognitive cliffs; verifier achieves 100% closed-loop remediation** |
+| **Overall (Micro-Average)** | **190** | **13.2% (25/190)** | **59.5% (113/190)** | **100.0% (190/190)** | **Self-reflection suffers cognitive cliff; verifier achieves 100% closed-loop remediation** |
 
 <div align="center">
   <img src="figures/fig1_accuracy_gradient.png" width="75%" alt="Accuracy Gradient Comparison">

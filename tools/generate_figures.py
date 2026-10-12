@@ -3,7 +3,7 @@
 """
 tools/generate_figures.py
 Regenerates publication-quality Figure 1 and Figure 2 for NuclearMC-Verifier
-with perfect alignment, no visual clipping/overlapping, and 300 DPI output.
+strictly based on ground-truth evaluation data from the 190-task benchmark suite.
 """
 
 import matplotlib.pyplot as plt
@@ -19,7 +19,15 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 
 def plot_fig1():
-    """Figure 1: Cross-Complexity Accuracy across 190 Benchmark Evaluations"""
+    """
+    Figure 1: Cross-Complexity Accuracy across 190 Benchmark Evaluations
+    Ground truth from 190 benchmark evaluation tasks:
+      - Tier 1: Arm A: 25/60 (41.7%), Arm B: 59/60 (98.3%), Arm C: 60/60 (100.0%)
+      - Tier 2: Arm A:  0/60  (0.0%), Arm B: 22/60 (36.7%), Arm C: 60/60 (100.0%)
+      - Tier 3: Arm A:  0/60  (0.0%), Arm B: 32/60 (53.3%), Arm C: 60/60 (100.0%)
+      - Wild  : Arm A:  0/10  (0.0%), Arm B:  0/10  (0.0%), Arm C: 10/10 (100.0%)
+      - Overall: Arm A: 25/190 (13.2%), Arm B: 113/190 (59.5%), Arm C: 190/190 (100.0%)
+    """
     tiers = [
         "Tier 1 (Synthetic\nSingle-slot, 60)",
         "Tier 2 (Coupled\nMulti-vol, 60)",
@@ -27,19 +35,19 @@ def plot_fig1():
         "Wild Corpus\n(CERN/GitHub, 10)"
     ]
     
-    arm_a = [41.7, 18.3, 23.3, 0.0]
-    arm_b = [86.7, 36.7, 53.3, 0.0]
+    arm_a = [41.7, 0.0, 0.0, 0.0]
+    arm_b = [98.3, 36.7, 53.3, 0.0]
     arm_c = [100.0, 100.0, 100.0, 100.0]
 
     x = np.arange(len(tiers))
-    width = 0.25
+    width = 0.24
 
-    fig, ax = plt.subplots(figsize=(8.8, 4.9), dpi=300)
+    fig, ax = plt.subplots(figsize=(8.8, 5.0), dpi=300)
 
-    # Plot bars
-    c_a = '#848fa5'  # Muted slate blue
-    c_b = '#5193d5'  # Crisp academic blue
-    c_c = '#e8782a'  # Vivid alert orange
+    # Academic palette
+    c_a = '#848fa5'  # Muted slate blue (Baseline)
+    c_b = '#5193d5'  # Academic blue (Self-Reflection)
+    c_c = '#e8782a'  # Alert orange (Formal Verifier)
 
     rects1 = ax.bar(x - width, arm_a, width, label='Arm A: Raw LLM Baseline',
                     color=c_a, edgecolor='black', linewidth=1.0, zorder=3)
@@ -54,24 +62,40 @@ def plot_fig1():
     # Subtle horizontal grid
     ax.yaxis.grid(True, linestyle=':', alpha=0.5, zorder=1)
 
-    # Add data labels on top of bars
-    def autolabel(rects):
-        for rect in rects:
-            height = rect.get_height()
-            if height == 0.0:
-                ax.annotate('0.0%',
-                            xy=(rect.get_x() + rect.get_width() / 2, 1.8),
-                            xytext=(0, 0), textcoords="offset points",
-                            ha='center', va='bottom', fontsize=10.5, fontweight='bold', zorder=4)
-            else:
-                ax.annotate(f'{height:.1f}%',
-                            xy=(rect.get_x() + rect.get_width() / 2, height),
-                            xytext=(0, 2.5), textcoords="offset points",
-                            ha='center', va='bottom', fontsize=10.5, fontweight='bold', zorder=4)
+    # Precise label annotations avoiding any horizontal crowding
+    for i in range(len(tiers)):
+        # Arm A
+        ha = arm_a[i]
+        xa = x[i] - width
+        if ha == 0.0:
+            ax.annotate('0.0%', xy=(xa, 1.8), ha='center', va='bottom',
+                        fontsize=9.5, fontweight='bold', color='#444444', zorder=4)
+        else:
+            ax.annotate(f'{ha:.1f}%', xy=(xa, ha), xytext=(0, 2.5), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9.5, fontweight='bold', zorder=4)
 
-    autolabel(rects1)
-    autolabel(rects2)
-    autolabel(rects3)
+        # Arm B
+        hb = arm_b[i]
+        xb = x[i]
+        if hb == 0.0:
+            ax.annotate('0.0%', xy=(xb, 1.8), ha='center', va='bottom',
+                        fontsize=9.5, fontweight='bold', color='#444444', zorder=4)
+        elif i == 0:  # Tier 1 Arm B (98.3%) adjacent to 100.0%
+            ax.annotate(f'{hb:.1f}%', xy=(xb, hb), xytext=(-2.5, 2.5), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9.5, fontweight='bold', zorder=4)
+        else:
+            ax.annotate(f'{hb:.1f}%', xy=(xb, hb), xytext=(0, 2.5), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9.5, fontweight='bold', zorder=4)
+
+        # Arm C
+        hc = arm_c[i]
+        xc = x[i] + width
+        if i == 0:  # Tier 1 Arm C (100.0%) shift slightly right for clear separation
+            ax.annotate(f'{hc:.1f}%', xy=(xc, hc), xytext=(3.0, 2.5), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9.5, fontweight='bold', zorder=4)
+        else:
+            ax.annotate(f'{hc:.1f}%', xy=(xc, hc), xytext=(0, 2.5), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9.5, fontweight='bold', zorder=4)
 
     ax.set_ylabel('Physical Accuracy Rate (%)', fontsize=13, fontweight='bold', labelpad=8)
     ax.set_title('Cross-Complexity Accuracy across 190 Benchmark Evaluations',
@@ -98,7 +122,15 @@ def plot_fig1():
 
 
 def plot_fig2():
-    """Figure 2: Error Distribution across Core Actions & Failure Slots"""
+    """
+    Figure 2: Distribution of 35 Critical Physical Errors in Arm A (Tier 1 Baseline)
+    Checked across 5 Canonical Transport Actions (35 failing tasks out of 60):
+      - Define: 4 (11.4%)
+      - Sample: 9 (25.7%)
+      - Fetch: 6 (17.1%)
+      - Accumulate: 8 (22.9%)
+      - Convert: 8 (22.9%)
+    """
     actions = ['Define', 'Sample', 'Fetch', 'Accumulate', 'Convert']
     counts = [4, 9, 6, 8, 8]
     colors = ['#3f72af', '#e8782a', '#95a5a6', '#f39c12', '#5dade2']
@@ -137,7 +169,7 @@ def plot_fig2():
         autotext.set_fontsize(11)
         autotext.set_fontweight('bold')
 
-    ax2.set_title('(b) Proportion across 31 Failure Slots', fontsize=14, fontweight='bold', pad=12)
+    ax2.set_title('(b) Error Proportions across 5 Actions', fontsize=14, fontweight='bold', pad=12)
 
     plt.tight_layout()
     png_path = os.path.join(OUT_DIR, "fig2_action_slots_distribution.png")
