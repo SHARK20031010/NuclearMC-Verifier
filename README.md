@@ -9,6 +9,7 @@
 **Deterministic Static Conservation Guardrail & Verification Engine for LLM-Synthesized Monte Carlo Simulation Codes**
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Tests-44%2F44_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
@@ -19,7 +20,7 @@
   <img src="https://img.shields.io/badge/Harness-Antigravity_%7C_DSH_%7C_Claude_%7C_OpenCode_%7C_MCP-9cf.svg" alt="Harness">
 </p>
 
-[Why NuclearMC-Verifier?](#-why-nuclearmc-verifier) · [Key Features](#-key-features) · [Quick Start](#-quick-start) · [CLI Tool](#-cli-tool-mc-verifier) · [6 Physics Conservation Buses](#-6-orthogonal-physics-conservation-buses) · [Engine Support & Roadmap](#-engine-support--roadmap) · [Agent Ecosystem Integration](#-agent-ecosystem-integration) · [190-Task Benchmark](#-190-task-benchmark-suite) · [Citation & License](#-license--citation)
+[Why NuclearMC-Verifier?](#-why-nuclearmc-verifier) · [Key Features](#-key-features) · [Quick Start](#-quick-start) · [CLI Tool](#-cli-tool-mc-verifier) · [6 Conservation Buses](#-6-orthogonal-physics-conservation-buses) · [5-Action Taxonomy](#-5-action--31-slot-closed-loop-taxonomy) · [Measure Invariants](#-four-basis-measure-invariants--lifecycle-axioms) · [Engine Roadmap](#-engine-support--roadmap) · [Agent Ecosystem](#-agent-ecosystem-integration) · [190-Task Benchmark](#-190-task-benchmark-suite) · [Citation](#-license--citation)
 
 </div>
 
@@ -162,12 +163,12 @@ A unified command-line interface [`./mc-verifier`](mc-verifier) is provided in t
 Run `./mc-verifier inspect` to instantly extract and audit physical parameters without compiling or running Geant4:
 
 ```text
-$ ./mc-verifier inspect benchmarks/code_C/T4-3/code.cc
+$ ./mc-verifier inspect benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc
 
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │  📋 Code Parameter Manifest (Universal Physics Parameter Extraction)             │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  Target: benchmarks/code_C/T4-3/code.cc                         [7.34 ms]        │
+│  Target: benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
 │  Project Architecture: Single-file C++ Compilation Unit                          │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │  [1. Radiation Source Parameters]                                                │
@@ -418,6 +419,8 @@ If you use NuclearMC-Verifier or the 190-task benchmark in your research, comput
   author       = {{NuclearMC-Verifier Contributors}},
   title        = {{NuclearMC-Verifier: High-Precision Physics Guardrail for LLM-Generated Monte Carlo Transport Codes}},
   year         = {2026},
-  url          = {https://github.com/SHARK20031010/NuclearMC-Verifier}
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.23231733},
+  url          = {https://doi.org/10.5281/zenodo.23231733}
 }
 ```

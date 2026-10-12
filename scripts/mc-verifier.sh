@@ -155,7 +155,7 @@ sys.exit(0 if report.passed else 1)
 }
 
 cmd_eval_pst() {
-    python3 "${ROOT_DIR}/benchmarks/eval_pst.py" "$@"
+    python3 "${ROOT_DIR}/scripts/eval_pst.py" "$@"
 }
 
 cmd_install_all() {

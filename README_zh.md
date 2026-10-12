@@ -9,6 +9,7 @@
 **大语言模型编写蒙特卡罗物理仿真代码的确定性守恒核验器与防幻觉护栏**
 
 <p align="center">
+  <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Tests-44%2F44_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
@@ -19,7 +20,7 @@
   <img src="https://img.shields.io/badge/Harness-Antigravity_%7C_DSH_%7C_Claude_%7C_OpenCode_%7C_MCP-9cf.svg" alt="Harness">
 </p>
 
-[English Overview](#-english-overview) · [痛点与演示](#-为什么需要它) · [核心特性](#-核心特性) · [快速上手](#-快速上手) · [CLI 总控工具](#-cli-总控工具) · [6 大物理守恒总线](#-6-大物理守恒总线) · [引擎支持与路线图](#-引擎支持与路线图-engine-support--roadmap) · [智能体集成指南](#-智能体生态集成) · [190 题基准库](#-190-题评测基准库) · [开源协议](#-开源许可与引用)
+[痛点与演示](#-为什么需要它) · [核心特性](#-核心特性) · [快速上手](#-快速上手) · [CLI 总控工具](#-cli-总控工具) · [6 大物理守恒总线](#-6-大物理守恒总线与逻辑传导链) · [五动作与31槽位](#-五动作--31-槽位闭环分类学-5-action--31-slot-taxonomy) · [四维测度代数完备基](#-四维测度代数完备基与时序公理-measure-theoretic-four-basis) · [引擎支持与路线图](#-引擎支持与路线图-engine-support--roadmap) · [智能体生态集成](#-智能体生态集成) · [190 题基准库](#-190-题评测基准库) · [开源许可与引用](#-开源许可与引用)
 
 </div>
 
@@ -158,12 +159,12 @@ pip install -r requirements.txt
 无需安装或编译 Geant4，运行 `./mc-verifier inspect` 在 7 毫秒内透视仿真程序的底层物理构成：
 
 ```text
-$ ./mc-verifier inspect benchmarks/code_C/T4-3/code.cc
+$ ./mc-verifier inspect benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc
 
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │  📋 蒙特卡罗仿真输入参数显式清单 (Code Parameter Manifest)                     │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  目标路径: benchmarks/code_C/T4-3/code.cc                         [7.34 ms]      │
+│  目标路径: benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
 │  工程架构: 单文件 C++ 编译单元                                                   │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │  [1. 辐射源项参数 (Radiation Source)]                                             │
@@ -396,7 +397,8 @@ NuclearMC-Verifier/
 ├── CITATION.cff                       # 学术引用元数据
 ├── LICENSE                            # Apache 2.0 开源许可证
 ├── requirements.txt                   # 依赖清单
-└── README.md                          # 本文档
+├── README.md                          # 英文主文档 (English Documentation)
+└── README_zh.md                       # 中文说明文档 (本文档)
 ```
 
 ---
@@ -422,6 +424,8 @@ NuclearMC-Verifier/
   author       = {{NuclearMC-Verifier Contributors}},
   title        = {{NuclearMC-Verifier: High-Precision Physics Guardrail for LLM-Generated Monte Carlo Transport Codes}},
   year         = {2026},
-  url          = {https://github.com/SHARK20031010/NuclearMC-Verifier}
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.23231733},
+  url          = {https://doi.org/10.5281/zenodo.23231733}
 }
 ```

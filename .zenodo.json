@@ -1,5 +1,6 @@
 {
   "title": "NuclearMC-Verifier: High-Precision Physics Guardrail & Formal Verifier for LLM-Generated Monte Carlo Transport Codes",
+  "doi": "10.5281/zenodo.23231733",
   "description": "NuclearMC-Verifier is a deterministic, AST-based static analysis engine and physical guardrail designed to eliminate silent physical failures in LLM-generated Monte Carlo particle transport simulation code (specialized for Geant4 C++ with a multi-engine architectural roadmap). The repository includes 6 orthogonal physical conservation cores, multi-harness agent adapters, and a comprehensive 190-task hierarchical benchmark dataset (Tiers 1–3 and Wild Corpus).",
   "upload_type": "software",
   "access_right": "open",
