@@ -15,7 +15,7 @@
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
-  <a href="benchmark_tasks_reference/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
+  <a href="benchmarks/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
   <img src="https://img.shields.io/badge/Latency-%3C_10ms-brightgreen.svg" alt="Latency">
   <img src="https://img.shields.io/badge/Harness-Antigravity_%7C_DSH_%7C_Claude_%7C_OpenCode_%7C_MCP-9cf.svg" alt="Harness">
 </p>
@@ -54,7 +54,7 @@ gun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
 在代码提交编译器或执行前，NuclearMC-Verifier 在 **< 10ms** 内直接拦截并给出物理诊断与自查建议：
 
 ```text
-$ ./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc
+$ ./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
 
 【形式化物理核验结果 - 拦截到 1 项物理与框架契约违约】：
 
@@ -131,10 +131,10 @@ pip install -r requirements.txt
 ./mc-verifier inspect path/to/your_simulation.cc
 
 # 快速体验：检查基准库中的合规代码 (输出：底层契约核验通过)
-./mc-verifier check benchmark_tasks_reference/tier1_single_slot/T1-1/code/code_ArmA.cc
+./mc-verifier check benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmC.cc
 
 # 快速体验：检查基准库中的缺陷代码 (输出：精准缺陷诊断与修复代码)
-./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc
+./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
 ```
 
 ---
@@ -159,12 +159,12 @@ pip install -r requirements.txt
 无需安装或编译 Geant4，运行 `./mc-verifier inspect` 在 7 毫秒内透视仿真程序的底层物理构成：
 
 ```text
-$ ./mc-verifier inspect benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc
+$ ./mc-verifier inspect benchmarks/cases/tier1_single_slot/T4-3/code/code_ArmC.cc
 
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │  📋 蒙特卡罗仿真输入参数显式清单 (Code Parameter Manifest)                     │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  目标路径: benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
+│  目标路径: benchmarks/cases/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
 │  工程架构: 单文件 C++ 编译单元                                                   │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │  [1. 辐射源项参数 (Radiation Source)]                                             │
@@ -365,9 +365,8 @@ NuclearMC-Verifier 原生支持多主流 Coding Agent，能够在模型生成代
   <p><i>图 1：190 题各梯级通过率对比（模型多轮自查在复杂任务中遭遇认知断崖，挂载核验器实现全量 100% 闭环修复）</i></p>
 </div>
 
-全部 190 道题目已整理归档在 [`benchmark_tasks_reference/`](benchmark_tasks_reference/)：
-- 每道题包含独立目录：`task.md`（任务描述与物理陷阱）、`prompt.md`（实测提示词）、`results.md`（诊断结论）与 `code/`（生成的 C++ 源码）。
-- 详见数据集索引：[benchmark_tasks_reference/README.md](benchmark_tasks_reference/README.md)。
+全部 190 道题目完整实验数据集（含提示词、任务说明与多模型生成源码）已在 [Zenodo (10.5281/zenodo.23231733)](https://doi.org/10.5281/zenodo.23231733) 完整归档开源。仓库内在 [`benchmarks/`](benchmarks/) 维护代表性核验基准用例与 Golden-PST 专家真值图标注：
+- 详见数据集规约与复现指南：[benchmarks/README.md](benchmarks/README.md)。
 
 ---
 
@@ -383,18 +382,22 @@ NuclearMC-Verifier/
 │   ├── rules/                         # 66 条形式化物理规则 (PHYS-0001 ~ PHYS-0066)
 │   ├── data/                          # 官方核衰变真值库与材料常数表
 │   └── check.py                       # 静态核验审计入口
+├── src/                               # 5 层物理语义树 (PST) 中间表示引擎
 ├── adapters/                          # 多平台 Agent 适配层
 │   ├── antigravity/                   # Google Antigravity 拦截钩子
 │   ├── dsh/                           # DeepSeek Harness Cordis 插件
 │   ├── mcp/                           # Model Context Protocol 标准服务端
 │   └── skills/                        # 跨平台通用 Skill 定义
 ├── .agents/                           # 项目插件与技能包 (mc-formal-verifier)
-├── benchmark_tasks_reference/         # 190 题分级评测基准参考库 (含每题任务、代码与对比)
+├── benchmarks/                        # 分级评测基准套件与 Golden-PST 黄金标注集
+├── docs/                              # 架构规范与 Geant4 5 大分区 API 字典
 ├── figures/                           # 评测与缺陷可视化图表
-├── scripts/                           # 统一控制与基准构建脚本
+├── scripts/                           # 统一控制与核验脚本
+├── tests/                             # 自动化测试套件 (44/44 单元与回归测试通过)
 ├── mc-verifier                        # 统一命令行总控可执行文件
 ├── PHYSICS_SPEC.md                    # 粒子输运蒙卡程序形式化规约白皮书
 ├── CITATION.cff                       # 学术引用元数据
+├── .zenodo.json                       # Zenodo 归档元数据
 ├── LICENSE                            # Apache 2.0 开源许可证
 ├── requirements.txt                   # 依赖清单
 ├── README.md                          # 英文主文档 (English Documentation)

@@ -1,7 +1,10 @@
 import json
 import pytest
 from src.pipeline import PSTPipeline
-from golden_benchmark.evaluate_pst import PSTComparator
+try:
+    from benchmarks.evaluate_pst import PSTComparator
+except ImportError:
+    from golden_benchmark.evaluate_pst import PSTComparator
 
 
 def test_golden_evaluator_scores_weight_leak():
@@ -42,7 +45,9 @@ def test_golden_evaluator_scores_weight_leak():
 
 def test_golden_pst_30_sample_regression():
     from pathlib import Path
-    anno_dir = Path(__file__).resolve().parent.parent / "golden_benchmark" / "sample_annotations"
+    anno_dir = Path(__file__).resolve().parent.parent / "benchmarks" / "sample_annotations"
+    if not anno_dir.exists():
+        anno_dir = Path(__file__).resolve().parent.parent / "golden_benchmark" / "sample_annotations"
     pipeline = PSTPipeline()
 
     sample_file = anno_dir / "wild_01.json"
@@ -50,6 +55,8 @@ def test_golden_pst_30_sample_regression():
         gt_data = json.load(f)
 
     src_path = Path(gt_data.get("source_file", ""))
+    if not src_path.exists():
+        src_path = Path(__file__).resolve().parent.parent / "benchmarks" / "cases" / "wild_corpus" / "WILD-01" / "code" / "case_buggy.cc"
     if not src_path.exists():
         src_path = Path(__file__).resolve().parent.parent / "benchmark_tasks_reference" / "wild_corpus" / "WILD-01" / "code" / "case_buggy.cc"
 

@@ -195,19 +195,18 @@ flowchart TD
 │   ├── dsh/                        # DeepSeek Harness (DSH) 生命周期拦截器
 │   ├── mcp/                        # Model Context Protocol (MCP) 标准服务 (server.py)
 │   └── opencode/                   # OpenCode 适配
-├── benchmark_tasks_reference/      # 190 题分级评测基准全景库
-│   ├── tier1_single_slot/          # Tier 1: 单槽位精准探测 (T1-1 ~ T1-10)
-│   ├── tier2_dual_slot/            # Tier 2: 双槽位交叉耦合 (T2-1 ~ T2-10)
-│   ├── tier3_extreme_penetration/  # Tier 3: 高阶多约束综合题 (T3-1 ~ T3-10)
-│   └── wild_corpus/                # Wild: 真实开源社区漏洞语料库 (WILD-01 ~ WILD-10)
-├── benchmarks/ -> 测量方案/         # 原始完整评测方案与对照实验数据
+├── benchmarks/                     # 分级评测基准套件与黄金标注集 (Zenodo DOI: 10.5281/zenodo.23231733)
+│   ├── cases/                      # 代表性测试用例集 (覆盖 8 大守恒域与真实开源语料)
+│   │   ├── tier1_single_slot/      # Tier 1 代表性单槽位算例 (T1-4, T1-6, T2-5, T4-1..T4-8)
+│   │   └── wild_corpus/            # Wild 代表性真实开源漏洞语料 (WILD-01 ~ WILD-10)
+│   ├── sample_annotations/         # 30 道经典题黄金 PST 结构化标注集
+│   ├── evaluate_pst.py             # PST 准确率自动化评估工具 (PSTComparator)
+│   └── README.md                   # 基准集规约与复现指南
 ├── docs/                           # 理论文档、API 分区分类学与架构规范
 │   ├── api_catalog/                # Geant4 5 大分区 API 语义字典
-│   ├── theory/                     # 物理守恒与测度理论推导
 │   ├── ARCHITECTURE.md             # 架构说明
 │   ├── PST_SPECIFICATION.md        # 物理语义树形式化规约
 │   └── PROJECT_DOCUMENTATION.md    # 本项目主文档
-├── golden_benchmark/               # 30 道经典题黄金 PST 结构化标注集
 ├── guardrail/                      # 核心形式化核验与伴侣引擎
 │   ├── companion.py                # 物理伴侣 (Inspector) 终端交互前端
 │   ├── check.py                    # 独立快速核验入口
@@ -305,7 +304,7 @@ flowchart TD
 ./mc-verifier off
 
 # 手动执行单文件形式化核验 (底层规则引擎)
-./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc
+./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
 
 # 运行 PST 全套基准自动化评测
 ./mc-verifier eval-pst
@@ -403,7 +402,7 @@ xychart-beta
        # 遍历图节点与边，核验物理拓扑关系
        pass
    ```
-3. 在 `golden_benchmark/` 中补充对应的黄金测试样例并在 `benchmarks/eval_pst.py` 中登记验证。
+3. 在 `benchmarks/sample_annotations/` 中补充对应的黄金测试样例并在 `scripts/eval_pst.py` 中登记验证。
 
 ### 8.2 拓展 OpenMC / MCNP 引擎后端
 

@@ -31,64 +31,64 @@ BENCHMARK_SUITE = [
         "domain": "Lifecycle",
         "physics_name": "混场中子-伽马出射能谱 / 几何边界跨越状态",
         "expected_rule": "PST-INV-LIFECYCLE-01",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T1-4/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T1-4/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmC.cc",
     },
     {
         "task_id": "T1-6",
         "domain": "Variance",
         "physics_name": "深穿透铁水屏蔽 / 方差缩减计分粒子权重",
         "expected_rule": "PST-INV-VARIANCE-01",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T1-6/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T1-6/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T1-6/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T1-6/code/code_ArmC.cc",
     },
     {
         "task_id": "T2-5",
         "domain": "Causality",
         "physics_name": "FLASH 脉冲电子束 / 瞬态微秒脉宽时间归一化",
         "expected_rule": "PST-INV-CAUSALITY-02",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T2-5/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T2-5/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T2-5/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T2-5/code/code_ArmC.cc",
     },
     {
         "task_id": "T4-1",
         "domain": "PhaseSpace",
         "physics_name": "HPGe Cs-137 探测效率 / 4π 球面度立体角测度",
         "expected_rule": "PST-INV-MEASURE-01",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T4-1/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T4-1/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T4-1/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T4-1/code/code_ArmC.cc",
     },
     {
         "task_id": "T4-4",
         "domain": "Lifecycle",
         "physics_name": "探测器死层厚度扫描 / 非活性区能量隔离",
         "expected_rule": "PST-INV-LIFECYCLE-02",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T4-4/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T4-4/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T4-4/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T4-4/code/code_ArmC.cc",
     },
     {
         "task_id": "T4-5",
         "domain": "PhaseSpace",
         "physics_name": "能谱高斯展宽 / 半高全宽与标准差换算 (2.355)",
         "expected_rule": "PST-INV-MEASURE-02",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T4-5/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T4-5/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T4-5/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T4-5/code/code_ArmC.cc",
     },
     {
         "task_id": "T4-6",
         "domain": "Causality",
         "physics_name": "散裂中子飞行时间谱 (TOF) / 绝对实验室全局时钟",
         "expected_rule": "PST-INV-CAUSALITY-01",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T4-6/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T4-6/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T4-6/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T4-6/code/code_ArmC.cc",
     },
     {
         "task_id": "T4-8",
         "domain": "Variance",
         "physics_name": "硅探测器微观载流子统计 / Fano 因子涨落抑制",
         "expected_rule": "PST-INV-VARIANCE-02",
-        "arm_a": "benchmark_tasks_reference/tier1_single_slot/T4-8/code/code_ArmA.cc",
-        "arm_c": "benchmark_tasks_reference/tier1_single_slot/T4-8/code/code_ArmC.cc",
+        "arm_a": "benchmarks/cases/tier1_single_slot/T4-8/code/code_ArmA.cc",
+        "arm_c": "benchmarks/cases/tier1_single_slot/T4-8/code/code_ArmC.cc",
     },
 ]
 
@@ -104,7 +104,11 @@ def run_evaluation() -> Dict[str, Any]:
     for task in BENCHMARK_SUITE:
         tid = task["task_id"]
         arm_a_p = ROOT / task["arm_a"]
+        if not arm_a_p.exists():
+            arm_a_p = ROOT / "benchmark_tasks_reference" / "tier1_single_slot" / tid / "code" / "code_ArmA.cc"
         arm_c_p = ROOT / task["arm_c"]
+        if not arm_c_p.exists():
+            arm_c_p = ROOT / "benchmark_tasks_reference" / "tier1_single_slot" / tid / "code" / "code_ArmC.cc"
 
         # 评估 Arm A (Defective)
         t0 = time.perf_counter()

@@ -15,7 +15,7 @@
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
-  <a href="benchmark_tasks_reference/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
+  <a href="benchmarks/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
   <img src="https://img.shields.io/badge/Latency-%3C_10ms-brightgreen.svg" alt="Latency">
   <img src="https://img.shields.io/badge/Harness-Antigravity_%7C_DSH_%7C_Claude_%7C_OpenCode_%7C_MCP-9cf.svg" alt="Harness">
 </p>
@@ -58,7 +58,7 @@ gun->SetParticleMomentumDirection(G4ThreeVector(0., 0., 1.));
 Before code reaches compilers or execution runners, NuclearMC-Verifier intercepts flaws in **< 10ms** and outputs actionable physical diagnostics:
 
 ```text
-$ ./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc
+$ ./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
 
 [Formal Physics Verification - 1 Physical & Framework Contract Violation Detected]:
 
@@ -135,10 +135,10 @@ pip install -r requirements.txt
 ./mc-verifier inspect path/to/your_simulation.cc
 
 # Quick Test: Check compliant baseline code from the benchmark suite
-./mc-verifier check benchmark_tasks_reference/tier1_single_slot/T1-1/code/code_ArmA.cc
+./mc-verifier check benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmC.cc
 
 # Quick Test: Check buggy code (outputs defect diagnosis and remediation code)
-./mc-verifier check benchmark_tasks_reference/wild_corpus/WILD-01/code/case_buggy.cc
+./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
 ```
 
 ---
@@ -163,12 +163,12 @@ A unified command-line interface [`./mc-verifier`](mc-verifier) is provided in t
 Run `./mc-verifier inspect` to instantly extract and audit physical parameters without compiling or running Geant4:
 
 ```text
-$ ./mc-verifier inspect benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc
+$ ./mc-verifier inspect benchmarks/cases/tier1_single_slot/T4-3/code/code_ArmC.cc
 
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │  📋 Code Parameter Manifest (Universal Physics Parameter Extraction)             │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  Target: benchmark_tasks_reference/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
+│  Target: benchmarks/cases/tier1_single_slot/T4-3/code/code_ArmC.cc [7.34 ms] │
 │  Project Architecture: Single-file C++ Compilation Unit                          │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │  [1. Radiation Source Parameters]                                                │
@@ -369,9 +369,8 @@ To evaluate the guardrail's effectiveness, extensive multi-arm comparative exper
   <p><i>Figure 1: Pass rate across evaluation tiers. Multi-turn self-reflection encounters cognitive cliffs in complex tasks, whereas NuclearMC-Verifier achieves 100% closed-loop remediation.</i></p>
 </div>
 
-All 190 tasks are archived in [`benchmark_tasks_reference/`](benchmark_tasks_reference/):
-- Each task includes an isolated directory: `task.md` (task description & physical trap), `prompt.md` (actual prompt), `results.md` (evaluation diagnosis), and `code/` (multi-arm C++ source codes).
-- See detailed dataset index: [benchmark_tasks_reference/README.md](benchmark_tasks_reference/README.md).
+The full 190-task experimental dataset (including prompts, task descriptions, and multi-arm codes) is archived on [Zenodo (10.5281/zenodo.23231733)](https://doi.org/10.5281/zenodo.23231733). Representative evaluation benchmarks and Golden-PST ground truth are maintained in [`benchmarks/`](benchmarks/):
+- See detailed benchmark documentation: [benchmarks/README.md](benchmarks/README.md).
 
 ---
 
@@ -387,15 +386,18 @@ NuclearMC-Verifier/
 │   ├── rules/                         # 66 formal physics rules (PHYS-0001 ~ PHYS-0066)
 │   ├── data/                          # Official decay reference data and material tables
 │   └── check.py                       # Static verification CLI entry point
+├── src/                               # 5-Layer Physics Semantic Tree (PST) IR engine
 ├── adapters/                          # Multi-platform agent adapters
 │   ├── antigravity/                   # Google Antigravity execution hook
 │   ├── dsh/                           # DeepSeek Harness Cordis plugin
 │   ├── mcp/                           # Model Context Protocol standard server
 │   └── skills/                        # Cross-platform Skill definition
 ├── .agents/                           # Agent plugin & skill bundle (mc-formal-verifier)
-├── benchmark_tasks_reference/         # 190-task hierarchical benchmark suite
+├── benchmarks/                        # Verification benchmark suite & Golden-PST annotations
+├── docs/                              # Architecture specifications & API catalogs
 ├── figures/                           # Benchmark & diagnostic figures
-├── scripts/                           # Unified control and dataset building scripts
+├── scripts/                           # Unified CLI and verification scripts
+├── tests/                             # Automated test suite (44/44 unit & regression tests)
 ├── mc-verifier                        # Master CLI executable
 ├── PHYSICS_SPEC.md                    # Formal physics specification whitepaper
 ├── CITATION.cff                       # Academic citation metadata

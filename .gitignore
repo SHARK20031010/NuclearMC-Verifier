@@ -85,9 +85,16 @@ paper_manuscript.md
 AI蒙卡程序物理正确率与防错体系_综合总案.md
 sim-indie-dev-scale-research.md
 
-# Intermediate experiment and dump directories
+# Intermediate experiment, generation tools, and full dataset archives
 g4dump/
 verify/
 测量方案/
-benchmarks
+benchmark_tasks_reference/
+golden_benchmark/
+tools/
+docs/theory/
+docs/README_pst_prototype.md
+docs/README_zh_pst_prototype.md
+scripts/build_tasks_reference.py
+CLAUDE.md
 
