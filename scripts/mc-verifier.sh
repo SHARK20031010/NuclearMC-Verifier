@@ -221,6 +221,19 @@ case "$1" in
     install-all)
         cmd_install_all
         ;;
+    help|-h|--help)
+        echo "形式化核验器 (MC-FormalVerifier) 统一管理工具"
+        echo "用法:"
+        echo "  $0 on               - 开启核验（所有 5 个 Harness 强制执行守恒量门禁）"
+        echo "  $0 off              - 关闭核验（所有 5 个 Harness 进入严格 0ms No-Op 直通）"
+        echo "  $0 status           - 查看当前启闭状态及 5 大 Harness 就绪情况"
+        echo "  $0 check <文件>     - 手动执行单文件形式化核验 (通用守恒引擎)"
+        echo "  $0 check-pst <文件> - 执行物理语义树 (PST) 中间表示提取与形式化核验"
+        echo "  $0 inspect <文件>   - 物理实参透视 (直接扒出几何尺寸/材料/源项/物理列表/计分全景)"
+        echo "  $0 eval-pst         - 运行 PST 全套基准评测 (8 组任务 16 份源码准确率与延迟)"
+        echo "  $0 install-all      - 一键向本地全部 5 大 Harness 挂载技能与适配器"
+        exit 0
+        ;;
     *)
         echo "形式化核验器 (MC-FormalVerifier) 统一管理工具"
         echo "用法:"
