@@ -89,6 +89,7 @@ class UniversalGuardrailEngine:
                 "defect_count": len(intent_issues),
             },
             "verdict": "FAIL" if len(critical_defects) > 0 else "PASS",
+            "is_valid": len(critical_defects) == 0,
             "critical_defect_count": len(critical_defects),
             "total_defect_count": len(all_defects),
             "defects_by_core": {

@@ -224,7 +224,13 @@ class PSTVerifier:
             line_clean = line.strip()
             if re.search(r'\b(?:dose|fDose|gDose)\w*\s*(?:=|\+=)\s*(.+?);', line_clean, re.I):
                 m = re.search(r'\b(?:dose|fDose|gDose)\w*\s*(?:=|\+=)\s*(.+?);', line_clean, re.I)
+                var_name = line_clean[:m.start(1)].lower()
                 rhs = m.group(1).lower()
+                
+                # 排除剂量率 (Dose Rate) 或比能量沉积功率密度计算 (包含 rate/flux/power 等)
+                if any(k in var_name for k in ["rate", "flux", "power", "profile"]):
+                    continue
+
                 is_edep_accumulation = any(k in rhs for k in ["edep", "energydeposit", "totale", "ftotaledep"])
                 has_mass = any(k in rhs for k in ["mass", "rho", "density", "vol", "getmass", "kg", "g/cm3"]) and "/" in rhs
                 if is_edep_accumulation and not has_mass:

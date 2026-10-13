@@ -251,34 +251,9 @@ class IntentCore:
         issues = []
         raw_intent = intent_text if intent_text else code_text
         intent_obj = extract_intent_block(raw_intent)
+        has_explicit_receipt = (intent_obj is not None)
 
-        if intent_obj is None:
-            # 尝试通过 IntentExtractor 从源码注释与上下文自适应推断环 0 意图
-            try:
-                from guardrail.ir.intent_extractor import IntentExtractor
-                extractor = IntentExtractor()
-                pi = extractor.extract(code_text)
-                if pi and pi.observable_desc:
-                    obs_val = pi.observable.value.lower() if hasattr(pi.observable, "value") else str(pi.observable).lower()
-                    f1a = "dose" if "dose" in obs_val else ("fluence" if "fluence" in obs_val else "other")
-                    intent_obj = {
-                        "F1a": f1a,
-                        "F1b": pi.observable_desc,
-                        "F2": "absorbed" if f1a == "dose" else "fluence_vol",
-                        "F3": "Gy" if f1a == "dose" else "cm-2",
-                        "F4": "volume_avg",
-                        "F5": "steady",
-                        "F6": "per_source",
-                        "F7": "report",
-                        "F8": "none",
-                        "F9": "N/A",
-                        "F10": "scalar",
-                        "warnings": []
-                    }
-            except Exception:
-                pass
-
-        if intent_obj is None:
+        if not has_explicit_receipt:
             if require_intent:
                 issues.append({
                     "core": "INTENT_CORE",
@@ -288,6 +263,32 @@ class IntentCore:
                     "description": "未检测到 guardrail-intent 回执块。目标物理量 (F1)、精确定义 (F2)、归一化分母 (F6) 与源强 (F9) 完全缺失，模型在此类需求缺失下容易在下游代码中悄悄自主决策并产生静默物理偏差。",
                     "remedy": "必须在代码前输出标准的 ```guardrail-intent ... ``` 结构化确认块，明确各槽位选择与决策来源。"
                 })
+            # 尝试通过 IntentExtractor 从源码注释与上下文自适应推断环 0 意图用于下游交叉审计
+            try:
+                from guardrail.ir.intent_extractor import IntentExtractor
+                extractor = IntentExtractor()
+                pi = extractor.extract(code_text)
+                if pi and pi.observable_desc:
+                    obs_val = pi.observable.value.lower() if hasattr(pi.observable, "value") else str(pi.observable).lower()
+                    f1a = "dose" if "dose" in obs_val else ("fluence" if "fluence" in obs_val else "other")
+                    intent_obj = {
+                        "F1a": {"v": f1a, "src": "A"},
+                        "F1b": {"v": pi.observable_desc, "src": "A"},
+                        "F2": {"v": "absorbed" if f1a == "dose" else "fluence_vol", "src": "A"},
+                        "F3": {"v": "Gy" if f1a == "dose" else "cm-2", "src": "A"},
+                        "F4": {"v": "volume_avg", "src": "A"},
+                        "F5": {"v": "steady", "src": "A"},
+                        "F6": {"v": "per_source", "src": "A"},
+                        "F7": {"v": "report", "src": "A"},
+                        "F8": {"v": "none", "src": "A"},
+                        "F9": {"v": "N/A", "src": "A"},
+                        "F10": {"v": "scalar", "src": "A"},
+                        "warnings": []
+                    }
+            except Exception:
+                pass
+
+        if intent_obj is None:
             return {
                 "has_intent": False,
                 "issues": issues,
@@ -295,22 +296,24 @@ class IntentCore:
                 "intent_obj": None
             }
 
-        errs, missing_warnings, stats = self.validate_intent_receipt(intent_obj)
-        for err in errs:
-            issues.append({
-                "core": "INTENT_CORE",
-                "contract": "RING0_SCHEMA_CONTRACT",
-                "severity": "HIGH",
-                "defect_name": "环 0 回执规范违背",
-                "description": err,
-                "remedy": "修正 guardrail-intent 块中的对应槽位取值，严格遵循固定枚举规范。"
-            })
+        stats = {}
+        if has_explicit_receipt:
+            errs, missing_warnings, stats = self.validate_intent_receipt(intent_obj)
+            for err in errs:
+                issues.append({
+                    "core": "INTENT_CORE",
+                    "contract": "RING0_SCHEMA_CONTRACT",
+                    "severity": "HIGH",
+                    "defect_name": "环 0 回执规范违背",
+                    "description": err,
+                    "remedy": "修正 guardrail-intent 块中的对应槽位取值，严格遵循固定枚举规范。"
+                })
 
         cross_issues = self.cross_audit_intent_and_code(intent_obj, code_text)
         issues.extend(cross_issues)
 
         return {
-            "has_intent": True,
+            "has_intent": has_explicit_receipt,
             "issues": issues,
             "stats": stats,
             "intent_obj": intent_obj

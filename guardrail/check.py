@@ -28,6 +28,11 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent
+for p in (str(PROJECT_ROOT), str(ROOT)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 MAX_ITEMS_PER_RULE = 5
 MAX_LIST = 8          # 汇总型规则最多列几个不同的值
 
@@ -408,6 +413,10 @@ def main():
             print(json.dumps(res, indent=2, ensure_ascii=False))
         else:
             print(engine.format_markdown_report(res))
+        
+        is_pass = res.get("is_valid", False) if "is_valid" in res else (res.get("verdict") == "PASS" and res.get("critical_defect_count", 0) == 0)
+        if not is_pass:
+            sys.exit(1)
         return
 
     if not a.snapshot or not a.records:
