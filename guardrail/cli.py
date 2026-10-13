@@ -67,31 +67,52 @@ def cmd_status() -> int:
 
 
 def cmd_check(args) -> int:
-    """手动执行单文件形式化核验 (默认双核联合核验：PST + 守恒总线规则)"""
-    target = args.target
-    if not target:
+    """手动执行形式化核验 (默认双核联合核验：PST + 守恒总线规则，支持单文件或多文件批量核验)"""
+    targets = getattr(args, "targets", None)
+    if targets is None:
+        single = getattr(args, "target", None)
+        targets = [single] if single else []
+    elif isinstance(targets, str):
+        targets = [targets]
+
+    if not targets:
         print("错误: 请提供需要核验的代码文件路径 (.cc/.cpp)。", file=sys.stderr)
-        return 1
-    
-    target_path = Path(target)
-    if not target_path.exists():
-        print(f"错误: 文件未找到: {target}", file=sys.stderr)
         return 1
 
     from guardrail.check import verify_file_joint, format_joint_report
-    res = verify_file_joint(
-        src_path=target_path,
-        pst_only=getattr(args, "pst_only", False),
-        rules_only=getattr(args, "rules_only", False)
-    )
-    
+
+    overall_valid = True
+    reports = []
+
+    for target in targets:
+        target_path = Path(target)
+        if not target_path.exists():
+            print(f"错误: 文件未找到: {target}", file=sys.stderr)
+            overall_valid = False
+            continue
+
+        res = verify_file_joint(
+            src_path=target_path,
+            pst_only=getattr(args, "pst_only", False),
+            rules_only=getattr(args, "rules_only", False)
+        )
+        reports.append(res)
+        if not res.get("is_valid", False):
+            overall_valid = False
+
+        if not getattr(args, "json", False):
+            if len(targets) > 1:
+                print(f"\n📄 正在核验: {target}")
+            print(format_joint_report(res))
+
     if getattr(args, "json", False):
         import json
-        print(json.dumps(res, indent=2, ensure_ascii=False))
-    else:
-        print(format_joint_report(res))
-    
-    return 0 if res.get("is_valid", False) else 1
+        if len(reports) == 1:
+            print(json.dumps(reports[0], indent=2, ensure_ascii=False))
+        else:
+            print(json.dumps({"results": reports, "is_valid": overall_valid}, indent=2, ensure_ascii=False))
+
+    return 0 if overall_valid else 1
 
 
 def cmd_check_pst(args) -> int:
@@ -162,8 +183,8 @@ def main():
     subparsers.add_parser("off", help="关闭核验门禁")
     subparsers.add_parser("status", help="查看当前启闭状态")
     
-    check_p = subparsers.add_parser("check", help="手动执行单文件形式化核验 (默认双核联合：PST + 守恒总线)")
-    check_p.add_argument("target", help="C++ 源码路径 (.cc/.cpp)")
+    check_p = subparsers.add_parser("check", help="手动执行形式化核验 (默认双核联合：PST + 守恒总线，支持批量多文件)")
+    check_p.add_argument("targets", nargs="+", help="C++ 源码路径 (.cc/.cpp)（支持同时传入多个文件）")
     check_p.add_argument("--pst-only", action="store_true", help="仅执行物理语义树 (PST) 图论拓扑核验")
     check_p.add_argument("--rules-only", action="store_true", help="仅执行守恒总线轻量规则核验")
     check_p.add_argument("--json", action="store_true", help="输出 JSON 格式")

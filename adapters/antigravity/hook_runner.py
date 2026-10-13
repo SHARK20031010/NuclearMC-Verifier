@@ -33,6 +33,16 @@ def is_physics_code(code_text: str, filename: str) -> bool:
     return any(kw in code_text for kw in PHYSICS_KEYWORDS)
 
 
+def is_test_or_example(filepath: str) -> bool:
+    norm = filepath.replace("\\", "/")
+    return (
+        any(p in norm for p in ["/examples/", "/benchmarks/", "/tests/"])
+        or norm.startswith("examples/")
+        or norm.startswith("tests/")
+        or norm.startswith("benchmarks/")
+    )
+
+
 def main():
     # 1. 开关检查：若关闭，立即 0ms 穿透放行
     if not is_enabled():
@@ -58,6 +68,11 @@ def main():
 
     target_file = args.get("TargetFile", "")
     code_content = args.get("CodeContent") or args.get("ReplacementContent", "")
+
+    # 若为测试、基准或示例文件，放行（允许编写教学/评测用的缺陷算例）
+    if is_test_or_example(target_file):
+        sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
+        return
 
     # 若非物理模拟代码，放行
     if not is_physics_code(code_content, target_file):

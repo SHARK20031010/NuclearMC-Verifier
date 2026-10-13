@@ -135,12 +135,31 @@ pip install -r requirements.txt
 # 物理实参透视 (直接扒出几何体、介质物性曲线、辐射源与计分全景)
 ./mc-verifier inspect path/to/your_simulation.cc
 
-# 快速体验：检查基准库中的合规代码 (输出：底层契约核验通过)
+# 10 秒快速体验：核验自带经典缺陷算例（输出：毫秒级缺陷诊断与针对性修复 Diff）
+./mc-verifier check examples/01_boundary_leak.cc
+./mc-verifier check examples/02_unweighted_variance_reduction.cc
+./mc-verifier check examples/03_scintillator_without_birks.cc
+
+# 快速体验：检查基准库中的合规黄金代码 (输出：双核联合核验通过 ✅)
 ./mc-verifier check benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmC.cc
 
-# 快速体验：检查基准库中的缺陷代码 (输出：精准缺陷诊断与修复代码)
-./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
+# 批量核验：一次性检查多个源文件
+./mc-verifier check examples/*.cc
 ```
+
+### 3. Git Pre-commit 门禁集成
+
+NuclearMC-Verifier 可作为通用 Pre-commit 钩子无缝接入任何 Geant4 / 蒙卡物理代码仓库。只需在您项目的 `.pre-commit-config.yaml` 中添加：
+
+```yaml
+repos:
+  - repo: https://github.com/SHARK20031010/NuclearMC-Verifier
+    rev: v0.1.0  # 或指定提交哈希 / Release 标签
+    hooks:
+      - id: nuclearmc-verifier
+```
+
+在开发者执行 `git commit` 时，核验器将在毫秒级对暂存的 C++ 粒子输运代码执行双核物理守恒核验，在代码提交入库前就阻断隐蔽的物理违规！
 
 ---
 
@@ -150,7 +169,7 @@ pip install -r requirements.txt
 
 | 命令 | 说明 |
 | :--- | :--- |
-| `./mc-verifier check <文件>` | 对指定的 Geant4 C++ 代码执行静态物理守恒核验 |
+| `./mc-verifier check <文件...>` | 对指定的 Geant4 C++ 代码执行双核联合形式化核验（支持批量文件） |
 | `./mc-verifier inspect <文件>` | **实参透视看板**：毫秒级提取几何实体、物性曲线、粒子源项与计分统计 |
 | `./mc-verifier check-pst <文件>` | **PST 形式化核验**：构建物理语义树 (PST) 中间表示并断言测度不变式 |
 | `./mc-verifier eval-pst` | 批量运行 PST 物理基准评测套件 (统计精确率、召回率与平均延迟) |

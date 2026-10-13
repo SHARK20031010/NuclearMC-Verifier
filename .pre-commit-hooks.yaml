@@ -1,0 +1,15 @@
+- id: nuclearmc-verifier
+  name: NuclearMC-Verifier
+  description: Joint dual-core formal verification (PST topology + physical conservation bus) for Monte Carlo transport codes
+  entry: mc-verifier check
+  language: python
+  types_or: [c++, c]
+  files: \.(cc|cpp|cxx|hh|hpp|h)$
+
+- id: nuclearmc-pst
+  name: NuclearMC-Verifier (PST Graph Only)
+  description: Physics Semantic Tree (PST) AST graph topology and lifecycle verification for Monte Carlo transport codes
+  entry: mc-verifier check --pst-only
+  language: python
+  types_or: [c++, c]
+  files: \.(cc|cpp|cxx|hh|hpp|h)$

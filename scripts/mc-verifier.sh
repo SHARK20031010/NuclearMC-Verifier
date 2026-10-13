@@ -127,12 +127,11 @@ cmd_status() {
 }
 
 cmd_check() {
-    local target="$1"
-    if [ -z "$target" ]; then
-        echo "用法: ./scripts/mc-verifier.sh check <代码路径.cc>"
+    if [ $# -eq 0 ]; then
+        echo "用法: ./scripts/mc-verifier.sh check <代码路径.cc> [更多文件...]"
         exit 1
     fi
-    python3 "$CHECK_PY" --code "$target" "${@:2}"
+    PYTHONPATH="${ROOT_DIR}:${PYTHONPATH}" python3 -m guardrail.cli check "$@"
 }
 
 cmd_check_pst() {
@@ -207,7 +206,8 @@ case "$1" in
         cmd_status
         ;;
     check)
-        cmd_check "$2" "${@:3}"
+        shift
+        cmd_check "$@"
         ;;
     check-pst)
         cmd_check_pst "$2" "${@:3}"

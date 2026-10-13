@@ -139,12 +139,31 @@ pip install -r requirements.txt
 # Inspect full physical parameter manifest (geometry, materials, curves, sources, tallies)
 ./mc-verifier inspect path/to/your_simulation.cc
 
+# Quick Test: Check bundled examples (instant defect diagnosis & remediation diff)
+./mc-verifier check examples/01_boundary_leak.cc
+./mc-verifier check examples/02_unweighted_variance_reduction.cc
+./mc-verifier check examples/03_scintillator_without_birks.cc
+
 # Quick Test: Check compliant baseline code from the benchmark suite
 ./mc-verifier check benchmarks/cases/tier1_single_slot/T1-4/code/code_ArmC.cc
 
-# Quick Test: Check buggy code (outputs defect diagnosis and remediation code)
-./mc-verifier check benchmarks/cases/wild_corpus/WILD-01/code/case_buggy.cc
+# Batch Check: Verify multiple files in a single pass
+./mc-verifier check examples/*.cc
 ```
+
+### 3. Git Pre-commit Linter Integration
+
+NuclearMC-Verifier can run automatically as a pre-commit hook in any Geant4 / Monte Carlo project. Add the following to your project's `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/SHARK20031010/NuclearMC-Verifier
+    rev: v0.1.0  # Or commit SHA / tag
+    hooks:
+      - id: nuclearmc-verifier
+```
+
+Every `git commit` will automatically audit changed C++ simulation files for physical conservation violations and block unphysical commits before they reach the repository!
 
 ---
 
@@ -154,7 +173,7 @@ A unified command-line interface [`./mc-verifier`](mc-verifier) is provided in t
 
 | Command | Description |
 | :--- | :--- |
-| `./mc-verifier check <file>` | Run static physics conservation verification on specified Geant4 C++ code |
+| `./mc-verifier check <file(s)...>` | Run joint dual-core formal verification (PST + conservation bus, supports batch files) |
 | `./mc-verifier inspect <file>` | **Parameter Manifest**: Inspect extracted geometry, property curves, sources, & tally metrics in &lt;10ms |
 | `./mc-verifier check-pst <file>` | **PST Verification**: Build Physical Semantic Tree (PST) IR and assert measure-algebraic invariants |
 | `./mc-verifier eval-pst` | Run the standard PST evaluation benchmark across multi-arm source test cases |
