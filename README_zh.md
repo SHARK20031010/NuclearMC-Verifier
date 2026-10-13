@@ -12,9 +12,9 @@
   <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <a href="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml"><img src="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Tests-60%2F60_Passed-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/测试-62%2F62_通过-brightgreen.svg" alt="测试">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
-  <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
+  <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Beta-yellow.svg" alt="OpenMC Beta"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
   <a href="benchmarks/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
   <img src="https://img.shields.io/badge/Latency-%3C_10ms-brightgreen.svg" alt="Latency">
@@ -113,17 +113,16 @@ flowchart TD
 
 ### 1. 安装依赖
 
-本项目基于 Python 3.9+ 构建，克隆即可运行：
+本项目基于 Python 3.9+ 构建：
 
 ```bash
+# 方式 A：一行命令通过 pip 直接安装（自动生成全局 mc-verifier 与 mc-v 命令行工具）
+pip install git+https://github.com/SHARK20031010/NuclearMC-Verifier.git
+
+# 方式 B：克隆源码可编辑安装（推荐本地开发使用）
 git clone https://github.com/SHARK20031010/NuclearMC-Verifier.git
 cd NuclearMC-Verifier
-
-# 推荐：标准可编辑安装（提供全局 mc-verifier 与 mc-v 命令行工具）
 pip install -e .
-
-# 或直接安装依赖
-pip install -r requirements.txt
 ```
 
 ### 2. 检查你的蒙卡代码
@@ -303,11 +302,11 @@ graph LR
 
 蒙特卡罗辐射输运求解包含**“底层物理守恒法则”**与**“上层仿真框架代码表达”**两个正交维度。NuclearMC-Verifier 在设计之初即确立了**“底层物理守恒总线通用化 + 前端代码解析适配层模块化”**的解耦架构：
 
-| 仿真框架 (Engine) | 前端代码形态 (Language/API) | 当前实装状态 (Status) | 实测验证基准 (Benchmark Validation) |
+| 仿真框架 (Engine) | 前端代码形态 (Language/API) | 成熟度等级 (Maturity) | 实测验证基准 (Benchmark Validation) |
 | :--- | :--- | :--- | :--- |
-| **Geant4** | **C++** (面向对象钩子、步进微态机、离散指针) | 🟢 **完整实装 (v1.0)** | **190 题全量覆盖** (Tier 1–3 + Wild 社区真实漏洞 100% 闭环) |
-| **OpenMC** | **Python API** (声明式材料、源项、Tally 过滤器) | 🟡 **路线图中 (Roadmap)** | 物理总线规范完全就绪，Python AST 槽位提取器开发中 |
-| **MCNP / FLUKA** | **卡片格式 (Cards)** (SDEF 源卡、F4/F8 计数、FM 乘子) | ⚪ **概念验证 (Planned)** | 输入流/正则卡片语法解析器规划中 |
+| **Geant4** | **C++** (面向对象钩子、步进微态机、离散指针) | 🟢 **生产级 (Production v1.0)** | **190 题全量覆盖** (Tier 1–3 + Wild 社区真实漏洞 100% 闭环) |
+| **OpenMC** | **Python API** (声明式材料、源项、Tally 过滤器) | 🟡 **Beta (功能原型已跑通)** | Python 原生 AST 提取器与物理总线已贯通，源项立体角各向同性、准直束与减方差权重核验已通过 CI 测试 (`test_openmc_verification.py`) |
+| **MCNP / FLUKA** | **卡片格式 (Cards)** (SDEF 源卡、F4/F8 计数、FM 乘子) | ⚪ **规划中 (Roadmap)** | 底层物理守恒法则规约已就绪，卡片输入流语法解析器规划中 |
 
 > [!NOTE]
 > **为什么当前版本深度专精于 Geant4？**  
@@ -403,8 +402,12 @@ NuclearMC-Verifier/
 │   ├── mcp/                           # Model Context Protocol 标准服务端
 │   └── skills/                        # 跨平台通用 Skill 定义
 ├── benchmarks/                        # 分级评测基准套件与 Golden-PST 黄金标注集
+├── examples/                          # 极简实战开箱算例 (边界错位、权重丢失、Birks猝灭)
+├── tests/                             # 自动化单元测试与黄金物理基准套件 (pytest, 62 passed)
 ├── scripts/                           # 统一控制与核验脚本
 ├── mc-verifier                        # 统一命令行总控可执行文件
+├── .pre-commit-hooks.yaml             # Git Pre-commit 门禁挂载规约 (自动化物理 Linter)
+├── pyproject.toml                     # 现代化 PEP 517/621 Python 打包与分发配置
 ├── PHYSICS_SPEC.md                    # 粒子输运蒙卡程序形式化规约白皮书
 ├── CITATION.cff                       # 学术引用元数据
 ├── .zenodo.json                       # Zenodo 归档元数据

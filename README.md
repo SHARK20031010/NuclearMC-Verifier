@@ -12,9 +12,9 @@
   <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <a href="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml"><img src="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Tests-60%2F60_Passed-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-62%2F62_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
-  <a href="#-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
+  <a href="#-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Beta-yellow.svg" alt="OpenMC Beta"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
   <a href="benchmarks/"><img src="https://img.shields.io/badge/Benchmarks-190_Tasks-orange.svg" alt="Benchmark"></a>
   <img src="https://img.shields.io/badge/Latency-%3C_10ms-brightgreen.svg" alt="Latency">
@@ -117,17 +117,16 @@ flowchart TD
 
 ### 1. Installation
 
-Requires Python 3.9+. Simply clone and install:
+Requires Python 3.9+.
 
 ```bash
+# Option A: One-line install via pip (provides global mc-verifier and mc-v commands)
+pip install git+https://github.com/SHARK20031010/NuclearMC-Verifier.git
+
+# Option B: Clone & editable install (recommended for local development)
 git clone https://github.com/SHARK20031010/NuclearMC-Verifier.git
 cd NuclearMC-Verifier
-
-# Recommended: standard install (provides global mc-verifier and mc-v CLI commands)
 pip install -e .
-
-# Or install dependencies via requirements.txt
-pip install -r requirements.txt
 ```
 
 ### 2. Verify Your Simulation Code
@@ -307,11 +306,11 @@ graph LR
 
 Monte Carlo radiation transport involves two orthogonal layers: **first-principles physical conservation laws** and **code expression in specific simulation engines**. NuclearMC-Verifier employs a decoupled architecture of **"Universal Physics Conservation Buses + Modular Front-End Syntax Adapters"**:
 
-| Simulation Engine | Syntax & Paradigm | Implementation Status | Benchmark Validation |
+| Simulation Engine | Syntax & Paradigm | Maturity Level | Benchmark & Test Validation |
 | :--- | :--- | :--- | :--- |
-| **Geant4** | **C++** (OOP hooks, stepping state-machine, pointers) | 🟢 **Fully Implemented (v1.0)** | **190 Tasks Fully Covered** (Tiers 1–3 + Wild Corpus 100% closed-loop) |
-| **OpenMC** | **Python API** (Declarative materials, sources, tally filters) | 🟡 **On Roadmap** | Physics buses ready; Python AST visitor in development |
-| **MCNP / FLUKA** | **Card-Based Input** (SDEF, F4/F8 tallies, FM multipliers) | ⚪ **Planned** | Card syntax stream parser planned |
+| **Geant4** | **C++** (OOP hooks, stepping state-machine, pointers) | 🟢 **Production (v1.0)** | **190 Tasks Fully Covered** (Tiers 1–3 + Wild Corpus 100% closed-loop) |
+| **OpenMC** | **Python API** (Declarative materials, sources, tally filters) | 🟡 **Beta (Functional Prototype)** | Native Python AST parser & physical buses integrated; isotropic source, beam collimation, & variance reduction verified in CI (`test_openmc_verification.py`) |
+| **MCNP / FLUKA** | **Card-Based Input** (SDEF, F4/F8 tallies, FM multipliers) | ⚪ **Roadmap (Planned)** | Physical conservation contracts ready; card syntax stream parser in design |
 
 > [!NOTE]
 > **Why is v1.0 specialized for Geant4?**  
@@ -407,8 +406,12 @@ NuclearMC-Verifier/
 │   ├── mcp/                           # Model Context Protocol standard server
 │   └── skills/                        # Cross-platform Skill definition
 ├── benchmarks/                        # Verification benchmark suite & Golden-PST annotations
+├── examples/                          # Instant-run demonstration cases (boundary leak, unweighted flux, Birks)
+├── tests/                             # Automated pytest suite & golden benchmarks (62 passed)
 ├── scripts/                           # Unified CLI and verification scripts
 ├── mc-verifier                        # Master CLI executable
+├── .pre-commit-hooks.yaml             # Git pre-commit hook definition for automated CI/commit linting
+├── pyproject.toml                     # Modern PEP 517/621 package build & CLI metadata
 ├── PHYSICS_SPEC.md                    # Formal physics specification whitepaper
 ├── CITATION.cff                       # Academic citation metadata
 ├── .zenodo.json                       # Zenodo archival metadata
