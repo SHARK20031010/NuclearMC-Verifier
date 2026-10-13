@@ -11,7 +11,8 @@
 <p align="center">
   <a href="https://doi.org/10.5281/zenodo.23231733"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23231733.svg" alt="DOI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/Tests-44%2F44_Passed-brightgreen.svg" alt="Tests">
+  <a href="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml"><img src="https://github.com/SHARK20031010/NuclearMC-Verifier/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Tests-60%2F60_Passed-brightgreen.svg" alt="Tests">
   <a href="https://geant4.web.cern.ch/"><img src="https://img.shields.io/badge/Geant4-11.2+_Verified-2ea44f.svg" alt="Geant4"></a>
   <a href="#-引擎支持与路线图-engine-support--roadmap"><img src="https://img.shields.io/badge/OpenMC-Roadmap-yellow.svg" alt="OpenMC Roadmap"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9+-3776ab.svg" alt="Python"></a>
@@ -118,6 +119,10 @@ flowchart TD
 git clone https://github.com/SHARK20031010/NuclearMC-Verifier.git
 cd NuclearMC-Verifier
 
+# 推荐：标准可编辑安装（提供全局 mc-verifier 与 mc-v 命令行工具）
+pip install -e .
+
+# 或直接安装依赖
 pip install -r requirements.txt
 ```
 

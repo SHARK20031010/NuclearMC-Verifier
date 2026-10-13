@@ -94,9 +94,12 @@ golden_benchmark/
 tools/
 docs/
 figures/
-tests/
-pytest.ini
 .agents/
 scripts/build_tasks_reference.py
 CLAUDE.md
+
+# Python packaging & test cache
+*.egg-info/
+dist/
+.pytest_cache/
 
