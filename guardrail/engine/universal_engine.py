@@ -101,6 +101,7 @@ class UniversalGuardrailEngine:
                 "nuclear_core": nuclear_issues,
             },
             "all_defects": all_defects,
+            "defects": all_defects,
             "slot_meta_inquiries": slot_analysis.get("meta_inquiries", [])
         }
 

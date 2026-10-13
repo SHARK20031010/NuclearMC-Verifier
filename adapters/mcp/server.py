@@ -117,7 +117,7 @@ def handle_tool_call(tool_name: str, arguments: dict):
             require_intent=require_spec(),
         )
 
-        defects = report.get("defects", [])
+        defects = report.get("all_defects") or report.get("defects", [])
         if not defects:
             return {
                 "content": [

@@ -71,7 +71,7 @@ def main():
         require_intent=require_spec(),
     )
 
-    defects = report.get("defects", [])
+    defects = report.get("all_defects") or report.get("defects", [])
     if not defects:
         # 完全合规，放行
         sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
