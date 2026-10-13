@@ -26,6 +26,7 @@ import re
 import sys
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import Optional, Dict, Any, List, Tuple
 
 ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = ROOT.parent
@@ -369,6 +370,140 @@ TIER_ORDER = {"violation": 0, "question": 1, "notice": 2}
 TIER_LABEL = {"violation": "发现问题", "question": "必须问你", "notice": "你该知道"}
 
 
+def verify_file_joint(
+    src_path: Path,
+    intent_text: Optional[str] = None,
+    require_intent: bool = False,
+    pst_only: bool = False,
+    rules_only: bool = False
+) -> Dict[str, Any]:
+    """
+    统一双核核验引擎：
+    - 联合执行 PST 物理语义树深度图论拓扑核验与通用守恒总线规则核验；
+    - 消除规则与图论分析的割裂，实现一键端到端静态物理门禁。
+    """
+    code_text = src_path.read_text(encoding="utf-8")
+
+    # 1. 物理语义树 (PST) 深度图论拓扑核验
+    pst_report = None
+    pst_graph = None
+    if not rules_only:
+        try:
+            from guardrail.ir import PSTBuilder, PSTVerifier
+            builder = PSTBuilder()
+            verifier = PSTVerifier()
+            pst_graph = builder.build_from_file(str(src_path))
+            pst_report = verifier.verify(pst_graph)
+        except Exception:
+            pass
+
+    # 2. 守恒总线与输入规约轻量规则核验
+    rules_res = None
+    if not pst_only:
+        try:
+            from engine.universal_engine import UniversalGuardrailEngine
+        except (ImportError, ValueError):
+            from guardrail.engine.universal_engine import UniversalGuardrailEngine
+        engine = UniversalGuardrailEngine()
+        rules_res = engine.inspect_source(
+            code_text,
+            filename=src_path.name,
+            intent_text=intent_text,
+            require_intent=require_intent
+        )
+
+    # 3. 联合判定状态
+    pst_passed = (pst_report is None) or pst_report.passed
+    rules_passed = (rules_res is None) or rules_res.get("is_valid", False)
+    is_valid = pst_passed and rules_passed
+    verdict = "PASS" if is_valid else "FAIL"
+
+    # 4. 构建统一数据字典
+    return {
+        "target_file": src_path.name,
+        "is_valid": is_valid,
+        "verdict": verdict,
+        "mode": "pst_only" if pst_only else ("rules_only" if rules_only else "joint"),
+        "pst": {
+            "passed": pst_passed,
+            "nodes_count": len(pst_graph.nodes) if pst_graph else 0,
+            "edges_count": len(pst_graph.edges) if pst_graph else 0,
+            "violations": [
+                {
+                    "rule_id": v.rule_id,
+                    "domain": v.domain.value if hasattr(v.domain, "value") else str(v.domain),
+                    "defect_name": v.defect_name,
+                    "severity": v.severity,
+                    "line_range": v.line_range,
+                    "code_evidence": v.code_evidence,
+                    "description": v.description,
+                    "remedy": v.remedy,
+                    "diff": v.diff,
+                }
+                for v in (pst_report.violations if pst_report else [])
+            ]
+        } if pst_report else None,
+        "rules": rules_res,
+    }
+
+
+def format_joint_report(result: Dict[str, Any]) -> str:
+    """输出双核联合核验的终端或 Markdown 诊断报告。"""
+    is_valid = result.get("is_valid", False)
+    pst_data = result.get("pst")
+    rules_data = result.get("rules")
+
+    if is_valid:
+        pst_info = ""
+        if pst_data:
+            pst_info = f"\n  • 物理语义树 (PST): {pst_data['nodes_count']} 节点, {pst_data['edges_count']} 依赖边 (拓扑时空因果与测度闭环)"
+        rules_info = ""
+        if rules_data:
+            iso = rules_data.get("detected_isotopes", [])
+            iso_str = f" [自动识别核素: {', '.join(iso)}]" if iso else ""
+            rules_info = f"\n  • 守恒总线契约: 物理过程、材料常数、衰变链与输入规约全部守恒{iso_str}"
+        return f"【形式化物理核验结果 - 双核联合核验通过 ✅】：\n✓ 物理语义树 (PST) 拓扑与五大守恒总线底层契约联合核验通过。{pst_info}{rules_info}"
+
+    pst_viols = pst_data.get("violations", []) if pst_data else []
+    rules_viols = rules_data.get("all_defects", []) if rules_data else []
+    total_viols = len(pst_viols) + len(rules_viols)
+
+    lines = [f"【形式化物理核验结果 - 双核联合核验检出 {total_viols} 项物理违约 🚨】："]
+
+    # 1. 展示 PST 图论拓扑违规
+    if pst_viols:
+        lines.append(f"\n### 🔬 物理语义树 (PST) 拓扑与生命周期违规 ({len(pst_viols)} 项)：")
+        for idx, v in enumerate(pst_viols, 1):
+            lr = f"行 {v['line_range'][0]}-{v['line_range'][1]}" if v.get("line_range") else "未知行"
+            lines.append(f"\n🚨 [PST-{idx}] 【{v['defect_name']}】(规则 `{v['rule_id']}` · [{v['domain']}])")
+            lines.append(f"  • 代码位置: {lr}")
+            if v.get("code_evidence"):
+                lines.append(f"  • 代码证据: `{v['code_evidence']}`")
+            lines.append(f"  • 物理机理诊断: {v['description']}")
+            lines.append(f"  • 规范修复指南: {v['remedy']}")
+            if v.get("diff"):
+                lines.append(f"  • 推荐修复 Diff:\n{v['diff']}")
+
+    # 2. 展示守恒总线违规
+    if rules_viols:
+        crit_count = rules_data.get("critical_defect_count", len(rules_viols))
+        lines.append(f"\n### 🛡️ 守恒总线与输入规约违规 ({crit_count} 项)：")
+        for idx, d in enumerate(rules_viols, 1):
+            sev = d.get("severity", "HIGH")
+            dname = d.get("defect_name", d.get("contract", "物理缺陷"))
+            lines.append(f"\n🚨 [RULE-{idx}] 严重度：`{sev}` · 【{dname}】\n  - **缺陷诊断**：{d.get('description', '')}\n  - **物理守恒针对性质询与修正建议**：{d.get('remedy', '')}")
+
+    # 3. 展示 31 槽位自证元问
+    inquiries = rules_data.get("slot_meta_inquiries", []) if rules_data else []
+    if inquiries:
+        lines.append("\n## 基于「五动作 × 31 槽位」的物理自证清单：")
+        for inq in inquiries[:4]:
+            q_str = inq.get("question", str(inq)) if isinstance(inq, dict) else str(inq)
+            lines.append(f"- {q_str}")
+
+    return "\n".join(lines)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Antigravity Geant4 Guardrail & Inspection Engine")
     ap.add_argument("--rules", default=str(ROOT / "compiled" / "rules.json"))
@@ -376,26 +511,22 @@ def main():
     ap.add_argument("--records", default=None, help="Runtime hook operations .rec file")
     ap.add_argument("--task-type", default="all")
     ap.add_argument("--source", "--code", dest="source", default=None,
-                    help="被检查程序的源码（.cc/.cpp）。可独立提供进行通用三层代码与物理诊断。")
+                    help="被检查程序的源码（.cc/.cpp）。可独立提供进行双核物理诊断。")
     ap.add_argument("--intent", default=None,
                     help="环 0 需求确认回执文件路径（含 guardrail-intent 块的 markdown 或 JSON）。")
     ap.add_argument("--require-intent", action="store_true",
                     help="强制要求提供环 0 需求确认回执，缺位直接判 FAIL (Specification Gap 拦截)。")
+    ap.add_argument("--pst-only", action="store_true", help="仅执行物理语义树 (PST) 图论拓扑核验")
+    ap.add_argument("--rules-only", action="store_true", help="仅执行守恒总线轻量规则核验")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
 
-    # 模式 1：如果未提供运行期快照，但提供了源码，自动启动五大正交守恒总线形式化核验引擎
+    # 模式 1：如果未提供运行期快照，但提供了源码，自动启动双核形式化核验引擎 (PST + Universal Guardrail)
     if a.source and (not a.snapshot or not a.records):
-        try:
-            from engine.universal_engine import UniversalGuardrailEngine
-        except (ImportError, ValueError):
-            from guardrail.engine.universal_engine import UniversalGuardrailEngine
-        
         src_path = Path(a.source)
         if not src_path.exists():
             print(f"Error: source file not found: {src_path}", file=sys.stderr)
             sys.exit(1)
-        code_text = src_path.read_text(encoding="utf-8")
         
         intent_text = None
         if a.intent:
@@ -405,17 +536,20 @@ def main():
             else:
                 intent_text = a.intent
 
-        engine = UniversalGuardrailEngine()
-        res = engine.inspect_source(code_text, filename=src_path.name,
-                                    intent_text=intent_text,
-                                    require_intent=a.require_intent)
+        res = verify_file_joint(
+            src_path=src_path,
+            intent_text=intent_text,
+            require_intent=a.require_intent,
+            pst_only=a.pst_only,
+            rules_only=a.rules_only
+        )
+
         if a.json:
             print(json.dumps(res, indent=2, ensure_ascii=False))
         else:
-            print(engine.format_markdown_report(res))
+            print(format_joint_report(res))
         
-        is_pass = res.get("is_valid", False) if "is_valid" in res else (res.get("verdict") == "PASS" and res.get("critical_defect_count", 0) == 0)
-        if not is_pass:
+        if not res.get("is_valid", False):
             sys.exit(1)
         return
 

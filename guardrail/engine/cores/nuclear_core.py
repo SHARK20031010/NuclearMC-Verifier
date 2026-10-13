@@ -175,7 +175,7 @@ class NuclearCore:
 
         is_scintillator = bool(re.search(r"(?:plastic|BC408|BC501|EJ200|EJ276|NE102|vinyltoluene|polystyrene|液体闪烁|塑料闪烁|有机闪烁)", raw, re.IGNORECASE))
         is_heavy_ion_or_neutron = bool(re.search(r"(?:neutron|proton|alpha|ion|中子|质子)", raw, re.IGNORECASE))
-        has_light_or_scint_process = bool(re.search(r"(?:optical|scintillat|photon|light|MeVee|pe|Npe|pulse|yield|G4OpticalPhysics|G4Scintillation)", raw, re.IGNORECASE))
+        has_light_or_scint_process = bool(re.search(r"(?:optical|scintillat|photon|\blight\b|MeVee|\bpe\b|Npe|\bpulse\b|\byield\b|G4OpticalPhysics|G4Scintillation)", raw, re.IGNORECASE))
         has_birks = bool(re.search(r"SetBirksConstant|Birks", clean))
 
         if is_scintillator and is_heavy_ion_or_neutron and has_light_or_scint_process and not has_birks:
@@ -208,7 +208,7 @@ class NuclearCore:
             })
 
         # 2. 高能电子/伽马打重靶缺光核反应包
-        is_high_e_electron = bool(re.search(r"(?:[2-9]\d(?:\.\d+)?|1\d\d(?:\.\d+)?)\s*\*?\s*MeV", clean) and re.search(r"e-|electron", clean, re.IGNORECASE))
+        is_high_e_electron = bool(re.search(r"(?:[2-9]\d(?:\.\d+)?|1\d\d(?:\.\d+)?)\s*\*?\s*MeV", clean) and re.search(r'["\']e-["\']|\belectron\b', clean, re.IGNORECASE))
         is_target_neutron = bool(re.search(r"photonuclear|光核|gfn|photofission", clean, re.IGNORECASE) or (re.search(r"neutron|中子", clean, re.IGNORECASE) and re.search(r"Target|target|G4_W|G4_Pb|G4_Ta|G4_U", clean)))
         has_photo_nuclear = bool(re.search(r"PhotoNuclear|G4PhotonuclearPhysics|G4PhotoNuclearProcess|FTFP_BERT|QGSP_BERT|G4EmExtraPhysics", clean, re.IGNORECASE))
 
@@ -224,7 +224,7 @@ class NuclearCore:
 
         # 3. 常温轻水材料命名非标导致热散射 S(alpha, beta) 静默缺失
         is_thermal_neutron = bool(
-            re.search(r"0\.025\s*\*?\s*eV|25\s*\*?\s*meV|\bthermal\b", clean, re.IGNORECASE) and
+            re.search(r"0\.025\s*\*?\s*eV|\b25\s*\*?\s*(?:m|milli)eV\b|\bthermal\b", clean) and
             re.search(r"G4_WATER|water|H2O|polyethylene|G4_POLYETHYLENE", clean, re.IGNORECASE) and
             re.search(r"neutron", clean, re.IGNORECASE)
         )
